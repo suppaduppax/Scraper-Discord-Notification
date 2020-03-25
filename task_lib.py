@@ -50,6 +50,9 @@ class Task:
             exclude = exclude\
         )
 
+    def matches_freq(self, time, unit):
+        return time == self.frequency and unit[:1] == self.frequency_unit[:1]
+
 def load_tasks(file):
     with open(file, "r") as stream:
         tasks_yaml = yaml.safe_load(stream)

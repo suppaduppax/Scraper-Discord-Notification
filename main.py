@@ -17,6 +17,7 @@ import notification_agent_lib as agentlib
 import scraper_lib as scraperlib
 import reflection_lib as refl
 import task_lib as tasklib
+import cron_lib as cronlib
 
 current_directory = os.path.dirname(os.path.realpath(__file__))
 ads_file = current_directory + "/ads.json"
@@ -38,7 +39,7 @@ def main():
     task_add.add_argument("-n", "--name", default="Untitled Task")
     task_add.add_argument("-s", "--source", required=True)
     task_add.add_argument("-u", "--url", required=True)
-    task_add.add_argument("-f", "--frequency", required=True)
+    task_add.add_argument("-f", "--frequency", type=int, required=True)
     task_add.add_argument("-F", "--frequency_unit", choices=["minutes", "hours"], required=True)
     task_add.add_argument("-i", "--include", nargs="+", default=[], required=True)
     task_add.add_argument("-x", "--exclude", nargs="+", default=[])
@@ -87,29 +88,46 @@ def task_add_cmd(args):
     if args.skip_confirm != True:
         tasklib.print_task(task)
         confirm = input("Add this task? [Y/n] ").lower()
-        if confirm != "n":
+        if confirm == "n":
             print ("Canceled")
             return
 
     tasklib.append_task_to_file(task, tasks_file)
+    cronlib.add(args.frequency, args.frequency_unit)
+
     print ("Task added")
 
 def task_delete_cmd(args):
+    index = args.index
     print(args)
     tasks = tasklib.load_tasks(tasks_file)
-    if args.index < 0 or args.index >= len(tasks):
+    if index < 0 or index >= len(tasks):
         print(f"task delete: index must be 0-{len(tasks)-1}")
         return
 
     if args.skip_confirm != True:
-        tasklib.print_task(tasks[args.index])
+        tasklib.print_task(tasks[index])
         confirm = input("Delete this task? [y/N] ").lower()
         if confirm != "y":
             print ("Canceled")
             return
 
-    tasklib.delete_task_from_file(args.index, tasks_file)
-    print(f"Deleted task [{args.index}]")
+    freq = tasks[index].frequency
+    freq_unit = tasks[index].frequency_unit
+
+    del(tasks[index])
+    tasklib.save_tasks(tasks, tasks_file)
+
+    # clear cronjob if no remaining tasks share the frequency
+    freq_found = False
+    for task in tasks:
+        if task.matches_freq(freq, freq_unit):
+            freq_found = True
+
+    if freq_found == False:
+        cronlib.delete(freq, freq_unit)
+
+    print(f"Deleted task [{index}]")
 
 # This was run as a cronjob so find all tasks that match the schedule
 # -c {cron_time} {cron_unit}
