@@ -1,0 +1,9 @@
+# Notification Agents Configuration File
+# -------------------------------------------------------
+# name - must be name of class inside the scraper.py file 
+# scraper_path - relative path of the scraper.py file
+# scraper_ad - relative path of the ad.py definition file
+- name: DiscordClient
+  path: notification_agents/discord_client/discord_client
+  config: clients/discord_client/config.yaml
+  enabled: True
