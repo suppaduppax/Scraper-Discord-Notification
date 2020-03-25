@@ -34,6 +34,4 @@ def get_agents():
 
         result[module_class_name] = module_class(config)
 
-        print(f"- {module_class_name}")
-
     return result

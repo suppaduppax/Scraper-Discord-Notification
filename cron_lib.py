@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# utility to add, delete cron entries
+
 import os
 import argparse
 import subprocess
@@ -18,10 +20,13 @@ def exists(time, unit):
     cron_string = cron_string.replace("*",  "[*]")
     return re.search(cron_string, out)
 
+def clear():
+    print ("Clearing crontab...")
+    os.system(f'crontab -l | grep -v "{path}"  | crontab -')
 
 def add(time, unit):
     if exists(time, unit):
-        print (f"Skipping add. Cron entry: '{time}, {unit}' already exists")
+        print (f"Skipping add cron. Cron entry: '{time}, {unit}' already exists")
         return
 
     cron_string = get_cron_line(time, unit)

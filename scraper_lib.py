@@ -14,7 +14,7 @@ import reflection_lib as refl
 # and inspects its contents for a "scraper.py" file and grabs the class inside that file
 # PARAMS: scraper_ads - json of all the previously scraped files
 # RETURNS: a dictionary {scraper_name : scraper_instance} 
-def get_scrapers(scraper_ads):
+def get_scrapers():
     result = {}
     subdir = "scrapers"
     filename = "scraper.py"
@@ -30,11 +30,6 @@ def get_scrapers(scraper_ads):
         module = refl.get_module(namespace)
         module_class_name, module_class = refl.get_class(module, namespace)
 
-        cur_ads = {}
-        if module_class_name in scraper_ads:
-            cur_ads = scraper_ads[module_class_name]
+        result[module_class_name] = module_class()
 
-        result[module_class_name] = module_class(cur_ads)
-
-        print(f"- {module_class_name}")
     return result

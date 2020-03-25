@@ -11,13 +11,16 @@ import re
 class KijijiScraper():
     current_directory = os.path.dirname(os.path.realpath(__file__))
 
-    def __init__(self, ads={}):
-        self.all_ads = ads
+    def __init__(self):
+        self.all_ads = {}
         self.new_ads = {}
-        self.id = ads
+        self.id = {}
 
         self.third_party_ads = []
         self.exclude_list = []
+
+    def set_all_ads(self, ads):
+        self.all_ads = ads
 
     # Set exclude list
     def set_exclude_list(self, exclude_words):

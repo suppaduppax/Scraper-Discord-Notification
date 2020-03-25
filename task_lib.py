@@ -42,7 +42,7 @@ class Task:
 
         return Task(\
             name = values["name"],\
-            frequency = values["frequency"],\
+            frequency = int(values["frequency"]),\
             frequency_unit = values["frequency_unit"],\
             url = values["url"],\
             source = values["source"],\
