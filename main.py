@@ -1,144 +1,176 @@
 #!/usr/bin/env python3
 
+# main.py -h for help
+# main.py --cron-job help
+# main.py task -h
+# main.py task [add|delete|list] -h for more help!
+
 import yaml
 import sys
 import os
 import importlib
 import json
+import inspect
+import argparse
 
-class Scraper():
-    enabled = False
+import notification_agent_lib as agentlib
+import scraper_lib as scraperlib
+import reflection_lib as refl
+import task_lib as tasklib
 
-    def __init__(self, name, path, ad_path, enabled, ads={}):
-        self.name = name
-        self.path = path
-        self.ad_path = ad_path
-        self.enabled = enabled
+current_directory = os.path.dirname(os.path.realpath(__file__))
+ads_file = current_directory + "/ads.json"
+tasks_file = current_directory + "/tasks.yaml"
 
-        if self.enabled == True:
-            module_path = self.path.replace("/", ".") 
-            module_path = module_path.replace(".py", "")
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-s", "--skip-notification", action="store_true", default=False)
 
-            # dynamically import module and store the scraper class
-            self.module = importlib.import_module(module_path)
-            scraper_class = getattr(self.module, self.name)
-            self.scraper = scraper_class(ads)
+    main_args = parser.add_mutually_exclusive_group()
+    main_args.add_argument("-c", "--cron-job", nargs=2, metavar=('INTEGER','minutes|hours'))
+    main_subparsers = parser.add_subparsers(dest="cmd")
 
-            ad_module_path = self.ad_path.replace("/", ".")
-            ad_module_path = module_path.replace(".py", "")
+    # task {name} {frequency} {frequency_unit}
+    main_sub = main_subparsers.add_parser("task")
+    task_subparsers = main_sub.add_subparsers(dest="task_cmd", required=True)
+#    main_sub.add_argument("task_cmd", choices=["add", "delete", "list"])
+    task_add = task_subparsers.add_parser("add", help="Add a new task")
+    task_add.add_argument("-n", "--name", default="Untitled Task")
+    task_add.add_argument("-s", "--source", required=True)
+    task_add.add_argument("-u", "--url", required=True)
+    task_add.add_argument("-f", "--frequency", required=True)
+    task_add.add_argument("-F", "--frequency_unit", choices=["minutes", "hours"], required=True)
+    task_add.add_argument("-i", "--include", nargs="+", default=[], required=True)
+    task_add.add_argument("-x", "--exclude", nargs="+", default=[])
+    task_add.add_argument("--skip-confirm", action="store_true", help="Do not ask for confirmation")
 
-            self.ad_module = importlib.import_module(ad_module_path)
-            ad_class = getattr(self.ad_module, self.name)
-            self.ad = ad_class()
+    task_delete = task_subparsers.add_parser("delete", help="Delete a task by index. Use task list to show indices")
+    task_delete.add_argument("index", type=int)
+    task_delete.add_argument("--skip-confirm", action="store_true", help="Do not ask for confirmation")
+    task_list = task_subparsers.add_parser("list", help="List all tasks")
 
-class Client():
-    def __init__(self, name, path, config, enabled):
-        self.name = name
-        self.path = path
-        self.enabled = enabled
+    args = parser.parse_args()
 
-        if enabled == True:
-            module_path = self.path.replace("/", ".")
-            module_path = module_path.replace(".py", "")
+    if args.cron_job:
+        cron_cmd(args.cron_job, args.skip_notification)
 
-            # dynamically import module and store the client class
-            self.module = importlib.import_module(module_path)
-            client_class = getattr(self.module, self.name)
-            self.client = client_class(config)
+    if args.cmd == "task":
+       task_cmd(args)
 
 
-if __name__ == "__main__":
-    args = sys.argv
-    skip_flag = "-s" in args
-    current_directory = os.path.dirname(os.path.realpath(__file__))
-    ads_path = current_directory + "/ads.json"
+def task_cmd(args):
+    cmds = {
+        "add" : task_add_cmd,
+        "delete" : task_delete_cmd,
+        "list" : task_list_cmd
+    }
+
+    if args.task_cmd in cmds:
+        cmds[args.task_cmd](args)
+    else:
+        print(f"Unknown task command: {args.args_cmd}")
+
+def task_list_cmd(args):
+    tasklib.list_tasks_in_file(tasks_file)
+
+def task_add_cmd(args):
+    task = tasklib.Task(\
+        name = args.name,\
+        frequency = args.frequency,\
+        frequency_unit = args.frequency_unit,\
+        source = args.source,\
+        url = args.url,\
+        include = args.include,\
+        exclude = args.exclude\
+    )
+
+    if args.skip_confirm != True:
+        tasklib.print_task(task)
+        confirm = input("Add this task? [Y/n] ").lower()
+        if confirm != "n":
+            print ("Canceled")
+            return
+
+    tasklib.append_task_to_file(task, tasks_file)
+    print ("Task added")
+
+def task_delete_cmd(args):
+    print(args)
+    tasks = tasklib.load_tasks(tasks_file)
+    if args.index < 0 or args.index >= len(tasks):
+        print(f"task delete: index must be 0-{len(tasks)-1}")
+        return
+
+    if args.skip_confirm != True:
+        tasklib.print_task(tasks[args.index])
+        confirm = input("Delete this task? [y/N] ").lower()
+        if confirm != "y":
+            print ("Canceled")
+            return
+
+    tasklib.delete_task_from_file(args.index, tasks_file)
+    print(f"Deleted task [{args.index}]")
+
+# This was run as a cronjob so find all tasks that match the schedule
+# -c {cron_time} {cron_unit}
+# cron_time: integer
+# cron_unit: string [ minute | hour ]
+def cron_cmd(cron_args, skip_flag=False):
+    cron_time = cron_args[0]
+    cron_unit = cron_args[1]
 
     scrapers = {}
-    clients = {}
-    ads_dict = {}
+    agents = {}
+    ads = {}
 
-    # Get config values
-    with open(current_directory + "/config.yaml", "r") as stream:
-        config = yaml.safe_load(stream)
+    # Get tasks
+    with open(tasks_file, "r") as stream:
+        tasks = yaml.safe_load(stream)
 
-    # Get scrapers
-    print("Initializing Scrapers:")
-    with open(current_directory + "/scrapers.yaml", "r") as stream:
-        scrapers_config = yaml.safe_load(stream)
+    # Get processed ads
+    with open(ads_file, "r") as stream:
+        ads = yaml.safe_load(stream)
 
-    if os.path.exists(ads_path):
-        with open(ads_path, "r") as stream:
-            ads_dict = json.load(stream)
-    else:
-        print("ads.json file not found! Creating: " + ads_path)
-        with open(ads_path, "w") as stream:
-            stream.write("{}")
+    scrapers = scraperlib.get_scrapers(ads)
+    agents = agentlib.get_agents()
 
-    for scrapers_dict in scrapers_config:
-        scraper_name = scrapers_dict.get("name")
-        scraper_path = scrapers_dict.get("scraper_path")
-        scraper_adpath = scrapers_dict.get("ad_path")
-        scraper_enabled = scrapers_dict.get("enabled")
+    # Scrape each url given in tasks file
+    for task in tasks:
+        freq = task.get("frequency")
+        freq_unit = task.get("frequency_unit")
 
-        print(f"- {scraper_name}")
-
-        if scraper_name in ads_dict:
-            # see if theres an ads entry for this scraper
-            scraper_ads = ads_dict[scraper_name]
-        else:
-            scraper_ads = {}
-
-        scrapers[scraper_name] = Scraper(scraper_name, scraper_path, scraper_adpath, scraper_enabled, scraper_ads)
-
-    # Get clients
-    print("Initializing Clients:")
-
-    with open(current_directory + "/clients.yaml", "r") as stream:
-        clients_config = yaml.safe_load(stream)
-
-    for clients_dict in clients_config:
-        client_name = clients_dict.get("name")
-        client_path = clients_dict.get("path")
-        client_enabled = clients_dict.get("enabled")
-        client_config_path = clients_dict.get("config")
-
-        print(f"- {client_name}")
-
-        with open(current_directory + "/" + client_config_path, "r") as stream:
-            client_config = yaml.safe_load(stream)
-
-        # add client to clients dict
-        clients[client_name] = Client(client_name, client_path, client_config, client_enabled)
-
-    # Scrape each url given in config file
-    for config_scraper in config:
-        scraper=scrapers[config_scraper.get("scraper")]
-
-        if scraper.enabled == False:
+        print(f"{freq} {freq_unit}:{cron_time} {cron_unit}")
+        # skip tasks that dont correspond with the cron schedule
+        if int(freq) != int(cron_time) or freq_unit[:1] != cron_unit[:1]:
             continue
 
-        for url_dict in config_scraper.get("urls"):
-            url = url_dict.get("url")
-            exclude_words = url_dict.get("exclude", [])
-            print(f"Scraping: {url}")
+        scraper_name = task.get("source")
+        scraper = scrapers[scraper_name]
+        url = task.get("url")
+        exclude_words = task.get("easdfasdfxclude", [])
 
-            if len(exclude_words):
-                print("Excluding: " + ", ".join(exclude_words))
+        print(f"Scraping: {url}")
 
-            scraper.scraper.set_exclude_list(exclude_words)
-            ads, ad_title = scraper.scraper.scrape_for_ads(url)
+        if len(exclude_words):
+            print("Excluding: " + ", ".join(exclude_words))
 
-            info_string = f"Found {len(ads)} new ads\n" \
-                if len(ads) != 1 else "Found 1 new ad\n"
-            print(info_string)
+        scraper.set_exclude_list(exclude_words)
+        ads, ad_title = scraper.scrape_for_ads(url)
 
-            if not skip_flag and len(ads):
-                for client_id in clients:
-                    client = clients[client_id].client
-                    if client.enabled == True:
-                        client.send_ads(ads, ad_title)
+        info_string = f"Found {len(ads)} new ads\n" \
+            if len(ads) != 1 else "Found 1 new ad\n"
+        print(info_string)
 
-        ads_dict[scraper.name] = scraper.scraper.id
+        if not skip_flag and len(ads):
+            for agent_id in agents:
+                agent = agents[agent_id]
+                agent.send_ads(ads, ad_title)
 
-        with open(ads_path, "w") as ads_file:
-            json.dump(ads_dict, ads_file)
+        ads[scraper_name] = scraper.id
+
+    with open(ads_file, "w") as stream:
+        json.dump(ads, stream)
+
+if __name__ == "__main__":
+    main()
+
