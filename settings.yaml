@@ -1,0 +1,8 @@
+# global settings file
+---
+  # show only the <N> most recent ads during a scrape. 0 to alwats show all ads
+  recent_ads: 3
+  # a global include list so you dont have to set it for every task
+  # global_include:
+  # a global exclude list so you dont have to set it for every task
+  # global_exclude:

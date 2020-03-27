@@ -96,7 +96,7 @@ def append_task_to_file(task, file):
 def delete_task_from_file(index, file):
     tasks = load_tasks(file)
     if index < 0 or index >= len(tasks):
-        print(f"tasklib.delete_task_from_file: Invalid index: {index}")
+        logging.error(f"tasklib.delete_task_from_file: Invalid index: {index}")
         return
 
     del(tasks[index])

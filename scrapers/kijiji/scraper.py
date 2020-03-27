@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#s!/usr/bin/env python3
 
 import  os
 import requests
@@ -11,24 +11,21 @@ import re
 class KijijiScraper():
     current_directory = os.path.dirname(os.path.realpath(__file__))
 
+    new_ads = []
+    old_ad_ids = []
+    exclude_list = []
+
+    third_party_ads = []
+
     def __init__(self):
-        self.all_ads = {}
-        self.new_ads = {}
-        self.id = {}
-
         self.third_party_ads = []
-        self.exclude_list = []
-
-    def set_all_ads(self, ads):
-        self.all_ads = ads
-
-    # Set exclude list
-    def set_exclude_list(self, exclude_words):
-        self.exclude_list = self.words_to_lower(exclude_words)
+        self.old_ad_ids = []
 
     # Pulls page data from a given kijiji url and finds all ads on each page
-    def scrape_for_ads(self, url):
+    def scrape_for_ads(self, url, old_ad_ids=[], exclude_list=[]):
         self.new_ads = {}
+        self.old_ad_ids = old_ad_ids
+        self.exclude_list = exclude_list
 
         title = None
         while url:
@@ -57,8 +54,8 @@ class KijijiScraper():
         # Find all third-party ads to skip them
         third_party_ads = soup.find_all("div", {"class": "third-party"})
         for ad in third_party_ads:
-            thid_party_ad_id = KijijiAd(ad).id
-            self.third_party_ads.append(thid_party_ad_id)
+            third_party_ad_id = KijijiAd(ad).id
+            self.third_party_ads.append(third_party_ad_id)
 
         # Create a dictionary of all ads with ad id being the key
         for ad in kijiji_ads:
@@ -70,20 +67,15 @@ class KijijiScraper():
             for x in self.exclude_list:
                 result = re.search(x, str(kijiji_ad.info).lower())
 
-#                print("ID: " + kijiji_ad.id + ". Exclude phrase: " + x + ". Result: " + str(result)) #For debugging purposes:
-
                 if result is not None:
-#                    print(kijiji_ad.id + " is not added to the notification list.") #For debugging purposes:
                     exclude_flag = -1
                     break
 
             if exclude_flag is not -1:
-                if (kijiji_ad.id not in self.all_ads and
+                if (kijiji_ad.id not in self.old_ad_ids and
                         kijiji_ad.id not in self.third_party_ads):
                     self.new_ads[kijiji_ad.id] = kijiji_ad.info
-                    self.all_ads[kijiji_ad.id] = kijiji_ad.info
-                    self.id[kijiji_ad.id] = kijiji_ad.id
-
+                    self.old_ad_ids.append(kijiji_ad.id)
 
     def get_title(self, soup):
         title_location = soup.find('div', {'class': 'message'})

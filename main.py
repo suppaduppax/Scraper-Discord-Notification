@@ -13,39 +13,45 @@ import json
 import inspect
 import argparse
 
+import settings_lib as settingslib
 import notification_agent_lib as agentlib
 import scraper_lib as scraperlib
-import reflection_lib as refl
 import task_lib as tasklib
 import cron_lib as cronlib
 
+import reflection_lib as refl
+import logger_lib as log
+
 current_directory = os.path.dirname(os.path.realpath(__file__))
+
 ads_file = current_directory + "/ads.json"
 tasks_file = current_directory + "/tasks.yaml"
+settings_file = current_directory + "/settings.yaml"
 
 scrapers = {}
 agents = {}
 ads = {}
 
-settings = {
-    "notify_recent" : 3
-}
-
-# Get tasks
+settings = settingslib.load_settings(settings_file)
 tasks = tasklib.load_tasks(tasks_file)
 
-# Get processed ads
+if not os.path.exists(ads_file):
+    with open(ads_file, "w") as stream:
+        stream.write("{}")
+
 with open(ads_file, "r") as stream:
     ads = yaml.safe_load(stream)
 
-scrapers = scraperlib.get_scrapers()
-agents = agentlib.get_agents()
+scrapers = scraperlib.get_scrapers(current_directory, "scrapers")
+agents = agentlib.get_agents(current_directory, "notification_agents")
 
 def main():
     parser = argparse.ArgumentParser()
     notify_group = parser.add_mutually_exclusive_group()
     notify_group.add_argument("-s", "--skip-notification", action="store_true", default=False)
-    notify_group.add_argument("--notify-recent", type=int, default=settings["notify_recent"], help=f"Only notify only most recent \# of ads. Default is {settings['notify_recent']}")
+    notify_group.add_argument("--notify-recent", type=int, default=settings.recent_ads, help=f"Only notify only most recent \# of ads. Default is {settings.recent_ads}")
+
+    parser.add_argument("--test-log", action="store_true")
 
     main_args = parser.add_mutually_exclusive_group()
     main_args.add_argument("-c", "--cron-job", nargs=2, metavar=('INTEGER','minutes|hours'))
@@ -75,6 +81,8 @@ def main():
 
     args = parser.parse_args()
 
+    if args.test_log:
+        test_log()
 
     if args.prime_all_tasks:
         prime_all_tasks(args)
@@ -83,10 +91,14 @@ def main():
         refresh_cron()
 
     if args.cron_job:
-        cron_cmd(args.cron_job, not args.skip_notification)
+        cron_cmd(args.cron_job, not args.skip_notification, args.notify_recent)
 
     if args.cmd == "task":
        task_cmd(args)
+
+def test_log():
+    #log.addHandler(cron_loghandler)
+    log.info("test")
 
 def refresh_cron():
     cronlib.clear()
@@ -102,7 +114,6 @@ def prime_all_tasks(args):
 
     save_ads()
 
-
 def task_cmd(args):
     cmds = {
         "add" : task_add_cmd,
@@ -113,7 +124,7 @@ def task_cmd(args):
     if args.task_cmd in cmds:
         cmds[args.task_cmd](args)
     else:
-        print(f"Unknown task command: {args.args_cmd}")
+        log.error_print(f"Unknown task command: {args.args_cmd}")
 
 def task_list_cmd(args):
     tasklib.list_tasks(tasks)
@@ -156,7 +167,7 @@ def task_delete_cmd(args):
     index = args.index
 
     if index < 0 or index >= len(tasks):
-        print(f"task delete: index must be 0-{len(tasks)-1}")
+        log.error_print(f"task delete: index must be 0-{len(tasks)-1}")
         return
 
     if args.skip_confirm != True:
@@ -185,15 +196,14 @@ def task_delete_cmd(args):
 
 # recent_ads - only show the latest N ads, set to 0 to disable
 def run_task(task, notify=True, recent_ads=0):
-    print (ads)
     scraper_name = task.source
     scraper = scrapers[scraper_name]
     url = task.url
     exclude_words = task.exclude
 
-    print(f"""Task: {task.name}
-Source: {task.source}
-URL: {task.url}""")
+    log.info_print(f"Task: {task.name}")
+    log.info_print(f"Source: {task.source}")
+    log.info_print(f"URL: {task.url}")
 
     if len(task.include):
         print(f"Including: {task.include}")
@@ -201,18 +211,16 @@ URL: {task.url}""")
     if len(task.exclude):
         print(f"Excluding: {task.exclude}")
 
-    all_ads = {}
+    old_ads = []
     if scraper_name in ads:
-        all_ads = ads[scraper_name]
- 
-    scraper.set_all_ads(all_ads)
-    scraper.set_exclude_list(exclude_words)
+        old_ads = ads[scraper_name]
 
-    new_ads, ad_title = scraper.scrape_for_ads(url)
+    new_ads, ad_title = scraper.scrape_for_ads(url, old_ad_ids=old_ads, exclude_list=exclude_words)
 
     info_string = f"Found {len(new_ads)} new ads" \
         if len(new_ads) != 1 else "Found 1 new ad"
-    print(info_string)
+
+    log.info_print(info_string)
 
     num_ads = len(new_ads)
     if notify and num_ads:
@@ -223,17 +231,22 @@ URL: {task.url}""")
         if recent_ads > 0:
             # only notify the last notify_recent new_ads
             ads_to_send = get_recent_ads(recent_ads, new_ads)
-            print(f"Total ads being notified: {len(ads_to_send)}")
+
+            log.info_print(f"Total ads being notified: {len(ads_to_send)}")
 
         for agent_id in agents:
             agent = agents[agent_id]
             agent.send_ads(ads_to_send, ad_title)
             i = i + 1
 
+    elif not notify and num_ads:
+        log.info_print("Skipping notification")
+
+    ads[scraper_name] =  scraper.old_ad_ids
+    log.info_print(f"Total all-time processed ads: {len(scraper.old_ad_ids)}")
 
     print()
 
-    ads[scraper_name] = scraper.id
 
 def get_recent_ads(recent, ads):
     i = 0
@@ -252,21 +265,23 @@ def get_recent_ads(recent, ads):
 # -c {cron_time} {cron_unit}
 # cron_time: integer
 # cron_unit: string [ minute | hour ]
-def cron_cmd(cron_args, notify=True):
+def cron_cmd(cron_args, notify=True, recent_ads=settings.recent_ads):
+    log.add_handler(log.CRON_HANDLER)
+
     cron_time = cron_args[0]
     cron_unit = cron_args[1]
 
+    log.info_print(f"Running cronjob for schedule: {cron_time} {cron_unit}")
     # Scrape each url given in tasks file
     for task in tasks:
         freq = task.frequency
         freq_unit = task.frequency_unit
 
-        print(f"{freq} {freq_unit}:{cron_time} {cron_unit}")
         # skip tasks that dont correspond with the cron schedule
         if int(freq) != int(cron_time) or freq_unit[:1] != cron_unit[:1]:
             continue
 
-        run_task(task, notify)
+        run_task(task, notify, recent_ads)
 
     save_ads()
 
