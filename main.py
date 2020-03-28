@@ -13,7 +13,13 @@ import json
 import inspect
 import argparse
 
-import settings_lib as settingslib
+current_directory = os.path.dirname(os.path.realpath(__file__))
+
+# import settings file first so other modules can use settings
+import settings_lib as settings
+settings_file = current_directory + "/settings.yaml"
+settings.load(settings_file)
+
 import notification_agent_lib as agentlib
 import scraper_lib as scraperlib
 import task_lib as tasklib
@@ -22,17 +28,14 @@ import cron_lib as cronlib
 import reflection_lib as refl
 import logger_lib as log
 
-current_directory = os.path.dirname(os.path.realpath(__file__))
 
 ads_file = current_directory + "/ads.json"
 tasks_file = current_directory + "/tasks.yaml"
-settings_file = current_directory + "/settings.yaml"
 
 scrapers = {}
 agents = {}
 ads = {}
 
-settings = settingslib.load_settings(settings_file)
 tasks = tasklib.load_tasks(tasks_file)
 
 if not os.path.exists(ads_file):
@@ -49,7 +52,7 @@ def main():
     parser = argparse.ArgumentParser()
     notify_group = parser.add_mutually_exclusive_group()
     notify_group.add_argument("-s", "--skip-notification", action="store_true", default=False)
-    notify_group.add_argument("--notify-recent", type=int, default=settings.recent_ads, help=f"Only notify only most recent \# of ads. Default is {settings.recent_ads}")
+    notify_group.add_argument("--notify-recent", type=int, default=settings.get("recent_ads"), help=f"Only notify only most recent \# of ads. Default is {settings.get('recent_ads')}")
 
     parser.add_argument("--test-log", action="store_true")
 
@@ -265,7 +268,7 @@ def get_recent_ads(recent, ads):
 # -c {cron_time} {cron_unit}
 # cron_time: integer
 # cron_unit: string [ minute | hour ]
-def cron_cmd(cron_args, notify=True, recent_ads=settings.recent_ads):
+def cron_cmd(cron_args, notify=True, recent_ads=settings.get("recent_ads")):
     log.add_handler(log.CRON_HANDLER)
 
     cron_time = cron_args[0]

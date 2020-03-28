@@ -1,6 +1,8 @@
 import yaml
 
 class Settings:
+    log_file_rotation = 5
+
     global_include = []
     global_exclude = []
     recent_ads = []
@@ -18,14 +20,16 @@ class Settings:
             s.global_exclude = data["global_exclude"]
 
         s.recent_ads = data["recent_ads"]
-
+        s.log_file_rotation = data["log_file_rotation"]
         return s
 
-def load_settings(file):
+def load(file):
+    global _settings
     with open(file, "r") as stream:
-        settings = yaml.safe_load(stream)
+        _settings = yaml.safe_load(stream)
 
-    return Settings.load(settings)
+def get(key):
+    return _settings[key]
 
 if __name__ == "__main__":
     print(load_settings("settings.yaml").__dict__)

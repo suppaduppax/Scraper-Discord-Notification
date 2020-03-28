@@ -6,7 +6,10 @@ import importlib
 import logging
 from logging.handlers import RotatingFileHandler
 
-import settings_lib
+import settings_lib as settings
+
+if settings.get("log_rotation_files") < 0:
+     settings.log_rotation_files = 1
 
 current_directory = os.path.dirname(os.path.realpath(__file__))
 
@@ -17,10 +20,10 @@ log_file_cron = "cron.log"
 logFormatter = logging.Formatter("%(asctime)s [%(levelname)-5.5s]  %(message)s")
 rootLogger = logging.getLogger()
 
-fileHandler = RotatingFileHandler(f"{log_path}/{log_file_debug}", maxBytes=32000, backupCount=5)
+fileHandler = RotatingFileHandler(f"{log_path}/{log_file_debug}", maxBytes=32000, backupCount={settings.get("log_rotation_files")})
 fileHandler.setFormatter(logFormatter)
 
-CRON_HANDLER = RotatingFileHandler(f"{log_path}/{log_file_cron}", maxBytes=32000, backupCount=5)
+CRON_HANDLER = RotatingFileHandler(f"{log_path}/{log_file_cron}", maxBytes=32000, backupCount={settings.get("log_rotation_files")})
 CRON_HANDLER.setFormatter(logFormatter)
 
 rootLogger.addHandler(fileHandler)
