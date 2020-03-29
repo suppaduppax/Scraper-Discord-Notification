@@ -12,7 +12,6 @@ def load(file):
     global _settings
 
     _settings = _get_defaults()
-
     with open(file, "r") as stream:
         _settings = yaml.safe_load(stream)
 

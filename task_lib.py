@@ -14,14 +14,15 @@ day="day"
 class Task:
     yaml_tag = None
 
-    def __init__(self, name="New Task", frequency=15, frequency_unit=minute, source="", url="", include=[], exclude=[]):
-        self.name = name
-        self.frequency = frequency
-        self.frequency_unit = frequency_unit
-        self.source = source
-        self.url = url
-        self.exclude = exclude
-        self.include = include
+    def __init__(self, **kwargs):
+            self.name = kwargs.get("name", "New Task")
+            self.frequency = kwargs.get("frequency", 15)
+            self.frequency_unit = kwargs.get("frequency_unit", "minutes")
+            self.source = kwargs.get("source")
+            self.url = kwargs.get("url")
+            self.exclude = kwargs.get("exclude", [])
+            self.include = kwargs.get("include", [])
+            self.enabled = kwargs.get("enabled", True)
 
     def set_frequency(freq, unit):
         self.frequency = freq
@@ -40,15 +41,22 @@ class Task:
         else:
             exclude = []
 
-        return Task(\
-            name = values["name"],\
-            frequency = int(values["frequency"]),\
-            frequency_unit = values["frequency_unit"],\
-            url = values["url"],\
-            source = values["source"],\
-            include = values["include"],\
-            exclude = exclude\
-        )
+
+        return Task(**data)
+
+
+
+
+#        return Task(\
+ #           name = values["name"],\
+  #          frequency = int(values["frequency"]),\
+   #        frequency_unit = values["frequency_unit"],\
+    #%        url = values["url"],\
+     #       source = values["source"],\
+      #      enabled = values["enabled"],\
+      # %     include = values["include"],\
+        #    exclude = exclude\
+       # )
 
     def matches_freq(self, time, unit):
         return time == self.frequency and unit[:1] == self.frequency_unit[:1]
