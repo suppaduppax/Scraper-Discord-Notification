@@ -4,6 +4,11 @@ __pycache__/
 
 # Private configs
 config.yaml
+tasks.yaml
+settings.yaml
+
+# logs
+logs/
 
 # Tests
 *test*
