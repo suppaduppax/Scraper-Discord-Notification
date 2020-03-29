@@ -55,6 +55,7 @@ def main():
     notify_group.add_argument("--notify-recent", type=int, default=settings.get("recent_ads"), help=f"Only notify only most recent \# of ads. Default is {settings.get('recent_ads')}")
 
     parser.add_argument("--test-log", action="store_true")
+    parser.add_argument("--force-tasks", action="store_true")
 
     main_args = parser.add_mutually_exclusive_group()
     main_args.add_argument("-c", "--cron-job", nargs=2, metavar=('INTEGER','minutes|hours'))
@@ -94,7 +95,10 @@ def main():
         refresh_cron()
 
     if args.cron_job:
-        cron_cmd(args.cron_job, not args.skip_notification, args.notify_recent)
+        cron_cmd(args.cron_job,
+            notify=not args.skip_notification,
+            force=args.force_tasks,
+            recent_ads=args.notify_recent)
 
     if args.cmd == "task":
        task_cmd(args)
@@ -197,8 +201,9 @@ def task_delete_cmd(args):
 
     print(f"Deleted task [{index}]")
 
+# force - run task regardless if it is enabled or not
 # recent_ads - only show the latest N ads, set to 0 to disable
-def run_task(task, notify=True, recent_ads=0):
+def run_task(task, notify=True, force=False, recent_ads=0):
     scraper_name = task.source
     scraper = scrapers[scraper_name]
     url = task.url
@@ -207,6 +212,15 @@ def run_task(task, notify=True, recent_ads=0):
     log.info_print(f"Task: {task.name}")
     log.info_print(f"Source: {task.source}")
     log.info_print(f"URL: {task.url}")
+
+    if task.enabled == False:
+        if force == False:
+            log.info_print("Task disabled. Skipping...")
+            print()
+            return
+        else:
+            log.info_print("Task disabled but forcing task to run...")
+
 
     if len(task.include):
         print(f"Including: {task.include}")
@@ -268,7 +282,7 @@ def get_recent_ads(recent, ads):
 # -c {cron_time} {cron_unit}
 # cron_time: integer
 # cron_unit: string [ minute | hour ]
-def cron_cmd(cron_args, notify=True, recent_ads=settings.get("recent_ads")):
+def cron_cmd(cron_args, notify=True, force=False, recent_ads=settings.get("recent_ads")):
     log.add_handler(log.CRON_HANDLER)
 
     cron_time = cron_args[0]
@@ -284,7 +298,10 @@ def cron_cmd(cron_args, notify=True, recent_ads=settings.get("recent_ads")):
         if int(freq) != int(cron_time) or freq_unit[:1] != cron_unit[:1]:
             continue
 
-        run_task(task, notify, recent_ads)
+        run_task(task,
+            notify=notify,
+            force=force,
+            recent_ads=recent_ads)
 
     save_ads()
 
