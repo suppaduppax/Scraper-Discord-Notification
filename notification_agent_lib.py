@@ -7,18 +7,35 @@ import importlib
 #import json
 import inspect
 import reflection_lib as refl
+import logger_lib as log
+
+class notif_agent:
+    def __init__(self, name, module_class, module_properties):
+        self.name = name
+        self.module_class = module_class
+        self.module_properties = module_properties
+
+        self.load_module()
+
+    def load_module(self):
+        if not self.module_class or not self.module_properties:
+            log.error_print("Cannot create notification agent module. Module class or module properties is empty or undefined")
+            return
+
+        self.module = self.module_class(self.module_properties)
 
 # looks for sub diretories inside "{directory}"
 # and inspects its contents for a "agent.py" file and grabs the class inside that file
 # uses config files inside of  {directory}/{agent_dir}/config.yaml
 # RETURNS: a dictionary {agent_name : agent_instance}
-def get_agents(directory, agent_dir):
+def get_modules(directory, agent_dir):
     result = {}
-
     filename = "agent.py"
     config_file = "config.yaml"
 
     subdirs = refl.get_directories(f"{directory}/{agent_dir}")
+    modules = {}
+
     for subdir in subdirs:
         scraper_name = subdir
         path = f"{directory}/{agent_dir}/{subdir}/{filename}"
@@ -36,10 +53,27 @@ def get_agents(directory, agent_dir):
 #        namespace = refl.path_to_namespace(path)
 #        module = refl.get_module(namespace)
         module_class_name, module_class = refl.get_class(module, namespace)
-
-        with open(f"{directory}/{agent_dir}/{subdir}/{config_file}", "r") as stream:
-            config = yaml.safe_load(stream)
-
-        result[module_class_name] = module_class(config)
+        result[subdir] = module_class
 
     return result
+
+def get_agents(directory, agents_file, modules_dir):
+    modules = get_modules(directory, modules_dir)
+    result = []
+    print(modules)
+    with open(f"{directory}/{agents_file}", "r") as stream:
+        config = yaml.safe_load(stream)
+
+
+    for agents in config:
+        agent = notif_agent(
+                    agents.get("name"),
+                    modules[agents.get("module")],
+                    agents.get("module_properties")
+                )
+
+        result.append(agent)
+
+    return result
+
+

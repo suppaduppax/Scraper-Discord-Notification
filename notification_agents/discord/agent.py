@@ -1,11 +1,18 @@
 #!/bin/usr/env python3
 import discord
+import logger_lib as log
 
 class DiscordClient():
 
     def __init__(self, discord_config):
-        self.webhook = discord.Webhook.from_url(discord_config.get("webhook"), adapter=discord.RequestsWebhookAdapter())
+        webhook = discord_config.get("webhook")
+        if not webhook:
+            log.error_print(f"Invalid or empty webhook: {webhook}")
+            return
+
+        self.webhook = discord.Webhook.from_url(webhook, adapter=discord.RequestsWebhookAdapter())
         self.bot_name = discord_config.get("bot name")
+        self.enabled = discord_config.get("enabled")
 
     # Sends a Discord message with links and info of new ads
     def send_ads(self, ad_dict, discord_title):

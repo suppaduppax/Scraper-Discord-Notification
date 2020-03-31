@@ -31,6 +31,7 @@ import logger_lib as log
 
 ads_file = current_directory + "/ads.json"
 tasks_file = current_directory + "/tasks.yaml"
+notif_agents_file = "notification_agents.yaml"
 
 scrapers = {}
 agents = {}
@@ -46,7 +47,7 @@ with open(ads_file, "r") as stream:
     ads = yaml.safe_load(stream)
 
 scrapers = scraperlib.get_scrapers(current_directory, "scrapers")
-agents = agentlib.get_agents(current_directory, "notification_agents")
+agents = agentlib.get_agents(current_directory, notif_agents_file, "notification_agents")
 
 def main():
     parser = argparse.ArgumentParser()
@@ -251,8 +252,11 @@ def run_task(task, notify=True, force=False, recent_ads=0):
 
             log.info_print(f"Total ads being notified: {len(ads_to_send)}")
 
-        for agent_id in agents:
-            agent = agents[agent_id]
+        for agent in agents:
+            if agent.enabled == False:
+                log.info_print(f"Agent {agent.name} is disabled... skipping")
+
+            log.info_print(f"Notifying agent: {agent.name}")
             agent.send_ads(ads_to_send, ad_title)
             i = i + 1
 

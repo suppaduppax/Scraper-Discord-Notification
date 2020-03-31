@@ -1,9 +1,13 @@
 # Notification Agents Configuration File
 # -------------------------------------------------------
 # name - must be name of class inside the scraper.py file 
-# scraper_path - relative path of the scraper.py file
-# scraper_ad - relative path of the ad.py definition file
-- name: DiscordClient
-  path: notification_agents/discord_client/discord_client
-  config: clients/discord_client/config.yaml
+# enabled - is this agebt enabled
+# module - a module found in notification_agents/ directory
+#          must match subdirectory name
+# module_properties - config for the module.
+#          see notification_agents/module/sample.yaml} for help
+- name: "DiscordClient #channel1"
   enabled: True
+  module: discord
+  module_properties:
+    web_hook: webhook
