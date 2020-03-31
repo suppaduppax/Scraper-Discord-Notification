@@ -252,12 +252,13 @@ def run_task(task, notify=True, force=False, recent_ads=0):
 
             log.info_print(f"Total ads being notified: {len(ads_to_send)}")
 
-        for agent in agents:
-            if agent.enabled == False:
-                log.info_print(f"Agent {agent.name} is disabled... skipping")
-
-            log.info_print(f"Notifying agent: {agent.name}")
-            agent.send_ads(ads_to_send, ad_title)
+        for agent_id in agents:
+            agent = agents[agent_id]
+            if agent.enabled:
+                log.info_print(f"Notifying agent: {agent_id}")
+                agent.send_ads(ads_to_send, ad_title)
+            else:
+                log.info_print(f"Skipping... Notification agent disabled: {agent_id}")
             i = i + 1
 
     elif not notify and num_ads:
