@@ -7,7 +7,8 @@
 # module_properties - config for the module.
 #          see notification_agents/module/sample.yaml} for help
 - name: "DiscordClient #channel1"
-  enabled: True
+  enabled: False
   module: discord
   module_properties:
-    web_hook: webhook
+    webhook: "https://discordapp.com/api/webhooks/692382686718722078/2hhfPRaMqeccGBCXJIhJIC0soUKlSbh2bqZl9it7CtNWrGj98HVXVvt5HClYTGKOt0of"
+    botname: discordbot

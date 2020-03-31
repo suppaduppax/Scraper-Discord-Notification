@@ -57,6 +57,7 @@ def main():
 
     parser.add_argument("--test-log", action="store_true")
     parser.add_argument("--force-tasks", action="store_true")
+    parser.add_argument("--force-notification-agents", action="store_true")
 
     main_args = parser.add_mutually_exclusive_group()
     main_args.add_argument("-c", "--cron-job", nargs=2, metavar=('INTEGER','minutes|hours'))
@@ -98,7 +99,8 @@ def main():
     if args.cron_job:
         cron_cmd(args.cron_job,
             notify=not args.skip_notification,
-            force=args.force_tasks,
+            force_tasks=args.force_tasks,
+            force_agents=args.force_notification_agents,
             recent_ads=args.notify_recent)
 
     if args.cmd == "task":
@@ -107,6 +109,11 @@ def main():
 def test_log():
     #log.addHandler(cron_loghandler)
     log.info("test")
+
+def notif_agents_enabled_check():
+    if len(agentlib.get_enabled(agents)) == 0:
+        log.warning_print("There are no enabled agents... no notifications will he sent")
+
 
 def refresh_cron():
     cronlib.clear()
@@ -117,6 +124,9 @@ def refresh_cron():
         cronlib.add(t.frequency, t.frequency_unit)
 
 def prime_all_tasks(args):
+    if args.skip_notification == False:
+        notif_agents_enabled_check()
+
     for task in tasks:
         run_task(task, notify=not args.skip_notification, recent_ads=args.notify_recent)
 
@@ -204,7 +214,7 @@ def task_delete_cmd(args):
 
 # force - run task regardless if it is enabled or not
 # recent_ads - only show the latest N ads, set to 0 to disable
-def run_task(task, notify=True, force=False, recent_ads=0):
+def run_task(task, notify=True, force_tasks=False, force_agents=False, recent_ads=0):
     scraper_name = task.source
     scraper = scrapers[scraper_name]
     url = task.url
@@ -215,7 +225,7 @@ def run_task(task, notify=True, force=False, recent_ads=0):
     log.info_print(f"URL: {task.url}")
 
     if task.enabled == False:
-        if force == False:
+        if force_tasks == False:
             log.info_print("Task disabled. Skipping...")
             print()
             return
@@ -252,13 +262,14 @@ def run_task(task, notify=True, force=False, recent_ads=0):
 
             log.info_print(f"Total ads being notified: {len(ads_to_send)}")
 
-        for agent_id in agents:
-            agent = agents[agent_id]
-            if agent.enabled:
-                log.info_print(f"Notifying agent: {agent_id}")
-                agent.send_ads(ads_to_send, ad_title)
+        for agent in agents:
+            if agent.enabled or force_agents == True:
+                if agent.enabled == False and force_agents == True:
+                    log.info_print("Notification agent was disabled but forcing...")
+                log.info_print(f"Notifying agent: {agent.name}")
+                agent.module.send_ads(ads_to_send, ad_title)
             else:
-                log.info_print(f"Skipping... Notification agent disabled: {agent_id}")
+                log.info_print(f"Skipping... Notification agent disabled: {agent.name}")
             i = i + 1
 
     elif not notify and num_ads:
@@ -287,13 +298,16 @@ def get_recent_ads(recent, ads):
 # -c {cron_time} {cron_unit}
 # cron_time: integer
 # cron_unit: string [ minute | hour ]
-def cron_cmd(cron_args, notify=True, force=False, recent_ads=settings.get("recent_ads")):
+def cron_cmd(cron_args, notify=True, force_tasks=False, force_agents=False, recent_ads=settings.get("recent_ads")):
     log.add_handler(log.CRON_HANDLER)
 
     cron_time = cron_args[0]
     cron_unit = cron_args[1]
 
     log.info_print(f"Running cronjob for schedule: {cron_time} {cron_unit}")
+    if notify == True and force_agents == False:
+        notif_agents_enabled_check()
+
     # Scrape each url given in tasks file
     for task in tasks:
         freq = task.frequency
@@ -305,7 +319,8 @@ def cron_cmd(cron_args, notify=True, force=False, recent_ads=settings.get("recen
 
         run_task(task,
             notify=notify,
-            force=force,
+            force_tasks=force_tasks,
+            force_agents=force_agents,
             recent_ads=recent_ads)
 
     save_ads()

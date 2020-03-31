@@ -6,13 +6,18 @@ class DiscordClient():
 
     def __init__(self, discord_config):
         webhook = discord_config.get("webhook")
+        botname = discord_config.get("botname")
+
         if not webhook:
             log.error_print(f"Invalid or empty webhook: {webhook}")
-            return
+            raise TypeError(f"Invalid or empty webhook: {webhook}")
+
+        if not botname:
+            log.error_print(f"Invalid or empty botname: {botname}")
+            raise TypeError(f"Invalid or empty botname: {botname}")
 
         self.webhook = discord.Webhook.from_url(webhook, adapter=discord.RequestsWebhookAdapter())
-        self.bot_name = discord_config.get("bot name")
-        self.enabled = discord_config.get("enabled")
+        self.bot_name = botname
 
     # Sends a Discord message with links and info of new ads
     def send_ads(self, ad_dict, discord_title):

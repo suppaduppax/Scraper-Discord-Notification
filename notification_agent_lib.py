@@ -10,11 +10,11 @@ import reflection_lib as refl
 import logger_lib as log
 
 class notif_agent:
+    enabled = True
     def __init__(self, name, module_class, module_properties):
         self.name = name
         self.module_class = module_class
         self.module_properties = module_properties
-
         self.load_module()
 
     def load_module(self):
@@ -60,20 +60,28 @@ def get_modules(directory, agent_dir):
 def get_agents(directory, agents_file, modules_dir):
     modules = get_modules(directory, modules_dir)
     result = []
-    print(modules)
+
     with open(f"{directory}/{agents_file}", "r") as stream:
         config = yaml.safe_load(stream)
 
 
-    for agents in config:
+    for c in config:
         agent = notif_agent(
-                    agents.get("name"),
-                    modules[agents.get("module")],
-                    agents.get("module_properties")
+                    c.get("name"),
+                    modules[c.get("module")],
+                    c.get("module_properties")
                 )
 
+        agent.enabled = c.get("enabled", True)
         result.append(agent)
 
     return result
 
 
+def get_enabled(agents):
+    result = []
+    for a in agents:
+        if a.enabled:
+            result.append(a)
+
+    return result
