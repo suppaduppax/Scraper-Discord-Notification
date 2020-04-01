@@ -113,10 +113,9 @@ def test_log():
     #log.addHandler(cron_loghandler)
     log.info("test")
 
-def notif_agents_enabled_check():
-    if len(agentlib.get_enabled(agents)) == 0:
-        log.warning_print("There are no enabled agents... no notifications will he sent")
-
+def notif_agents_enabled_check(notif_agents):
+    if len(agentlib.get_enabled(notif_agents)) == 0:
+        log.warning_print("There are no enabled agents... no notifications will be sent")
 
 def refresh_cron():
     cronlib.clear()
@@ -127,9 +126,6 @@ def refresh_cron():
         cronlib.add(t.frequency, t.frequency_unit)
 
 def prime_all_tasks(args):
-    if args.skip_notification == False:
-        notif_agents_enabled_check()
-
     for task in tasks:
         run_task(task, notify=not args.skip_notification, recent_ads=args.notify_recent)
 
@@ -230,11 +226,12 @@ def run_task(task, notify=True, force_tasks=False, force_agents=False, recent_ad
         else:
             log.info_print("Task disabled but forcing task to run...")
 
-    for source_id in task.source_ids:
-        task_notif_agents = []
-        for notif_agent_id in task.notif_agent_ids:
-            task_notif_agents.append(agents[notif_agent_id])
 
+    task_notif_agents = agentlib.get_notif_agents_by_ids(agents, task.notif_agent_ids)
+    if notify == True and force_agents == False:
+        notif_agents_enabled_check(task_notif_agents)
+
+    for source_id in task.source_ids:
         scrape_source(
             sources[source_id],
             task_notif_agents,
@@ -278,18 +275,19 @@ def scrape_source(source, notif_agents, include=[], exclude=[], notify=True, for
         if recent_ads > 0:
             # only notify the last notify_recent new_ads
             ads_to_send = get_recent_ads(recent_ads, new_ads)
-
             log.info_print(f"Total ads to notify about: {len(ads_to_send)}")
 
         if len(notif_agents) == 0:
             log.warning_print("No notification agents set... nothing to notify")
         else:
+            if len(notif_agents) > 1:
+                log.info_print(f"Notifying agents: {agentlib.get_names(notif_agents)}")
+
             for agent in notif_agents:
                 if agent.enabled or force_agents == True:
                     if agent.enabled == False and force_agents == True:
                         log.info_print("Notification agent was disabled but forcing...")
 
-                    log.info_print(f"Notifying agent: {agent.name}")
                     agent.module.send_ads(ads_to_send, ad_title)
 
                 else:
@@ -301,7 +299,7 @@ def scrape_source(source, notif_agents, include=[], exclude=[], notify=True, for
         log.info_print("Skipping notification")
 
     ads[source.module] = scraper.old_ad_ids
-    log.info_print(f"Total all-time processed ads: {len(scraper.old_ad_ids)}")
+    log.debug_print(f"Total all-time processed ads: {len(scraper.old_ad_ids)}")
 
     print()
 
@@ -329,8 +327,6 @@ def cron_cmd(cron_args, notify=True, force_tasks=False, force_agents=False, rece
     cron_unit = cron_args[1]
 
     log.info_print(f"Running cronjob for schedule: {cron_time} {cron_unit}")
-    if notify == True and force_agents == False:
-        notif_agents_enabled_check()
 
     # Scrape each url given in tasks file
     for task in tasks:

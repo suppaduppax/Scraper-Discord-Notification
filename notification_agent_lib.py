@@ -8,10 +8,13 @@ import importlib
 import inspect
 import reflection_lib as refl
 import logger_lib as log
+import uuid
 
 class notif_agent:
     enabled = True
-    def __init__(self, name, module_class, module_properties):
+
+    def __init__(self, id, name, module_class, module_properties):
+        self.id = id
         self.name = name
         self.module_class = module_class
         self.module_properties = module_properties
@@ -59,7 +62,7 @@ def get_modules(directory, agent_dir):
 
 def get_agents(directory, agents_file, modules_dir):
     modules = get_modules(directory, modules_dir)
-    result = []
+    result = {}
 
     with open(f"{directory}/{agents_file}", "r") as stream:
         config = yaml.safe_load(stream)
@@ -67,16 +70,33 @@ def get_agents(directory, agents_file, modules_dir):
 
     for c in config:
         agent = notif_agent(
+                    c.get("id", str(uuid.uuid4())),
                     c.get("name"),
                     modules[c.get("module")],
                     c.get("module_properties")
                 )
 
         agent.enabled = c.get("enabled", True)
-        result.append(agent)
+
+        log.debug_print(f"Adding notification agent: {agent.id} {agent.name}")
+        result[agent.id] = agent
 
     return result
 
+def get_notif_agents_by_ids(notif_agents, ids):
+    result = []
+    for id in ids:
+        result.append(notif_agents[id])
+
+    return result
+
+
+def get_names(notif_agents):
+    names = []
+    for a in notif_agents:
+        names.append(a.name)
+
+    return names
 
 def get_enabled(agents):
     result = []
