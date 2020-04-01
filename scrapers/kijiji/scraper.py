@@ -13,7 +13,7 @@ class KijijiScraper():
 
     new_ads = []
     old_ad_ids = []
-    exclude_list = []
+    exclude = []
 
     third_party_ads = []
 
@@ -22,11 +22,12 @@ class KijijiScraper():
         self.old_ad_ids = []
 
     # Pulls page data from a given kijiji url and finds all ads on each page
-    def scrape_for_ads(self, url, old_ad_ids=[], exclude_list=[]):
+    def scrape_for_ads(self, old_ad_ids, exclude=[], **kwargs):
         self.new_ads = {}
         self.old_ad_ids = old_ad_ids
-        self.exclude_list = exclude_list
+        self.exclude = exclude
 
+        url = kwargs["url"]
         title = None
         while url:
             # Get the html data from the URL
@@ -64,7 +65,7 @@ class KijijiScraper():
             exclude_flag = 0
 
             # If any of the ad words match the exclude list then skip
-            for x in self.exclude_list:
+            for x in self.exclude:
                 result = re.search(x, str(kijiji_ad.info).lower())
 
                 if result is not None:

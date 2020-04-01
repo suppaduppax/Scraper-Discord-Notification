@@ -16,13 +16,13 @@ class Task:
 
     def __init__(self, **kwargs):
             self.name = kwargs.get("name", "New Task")
+            self.enabled = kwargs.get("enabled", True)
             self.frequency = kwargs.get("frequency", 15)
             self.frequency_unit = kwargs.get("frequency_unit", "minutes")
-            self.source = kwargs.get("source")
-            self.url = kwargs.get("url")
-            self.exclude = kwargs.get("exclude", [])
+            self.source_ids = kwargs.get("source_ids", [])
+            self.notif_agent_ids = kwargs.get("notification_agent_ids", [])
             self.include = kwargs.get("include", [])
-            self.enabled = kwargs.get("enabled", True)
+            self.exclude = kwargs.get("exclude", [])
 
     def set_frequency(freq, unit):
         self.frequency = freq
@@ -43,20 +43,6 @@ class Task:
 
 
         return Task(**data)
-
-
-
-
-#        return Task(\
- #           name = values["name"],\
-  #          frequency = int(values["frequency"]),\
-   #        frequency_unit = values["frequency_unit"],\
-    #%        url = values["url"],\
-     #       source = values["source"],\
-      #      enabled = values["enabled"],\
-      # %     include = values["include"],\
-        #    exclude = exclude\
-       # )
 
     def matches_freq(self, time, unit):
         return time == self.frequency and unit[:1] == self.frequency_unit[:1]
@@ -112,7 +98,7 @@ def delete_task_from_file(index, file):
 
 def print_task(task):
         print(f"""Name: {task.name}
-Source: {task.source}
+Source ids: {task.source_ids}
 Frequency: {task.frequency} {task.frequency_unit}
 Url: {task.url}
 Include: {task.include}

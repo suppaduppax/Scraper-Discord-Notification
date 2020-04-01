@@ -23,21 +23,22 @@ settings.load(settings_file)
 import notification_agent_lib as agentlib
 import scraper_lib as scraperlib
 import task_lib as tasklib
+import source_lib as sourcelib
 import cron_lib as cronlib
 
 import reflection_lib as refl
 import logger_lib as log
 
 
-ads_file = current_directory + "/ads.json"
-tasks_file = current_directory + "/tasks.yaml"
-notif_agents_file = "notification_agents.yaml"
+ads_file = f"{current_directory}/ads.json"
+tasks_file = f"{current_directory}/tasks.yaml"
+sources_file = f"{current_directory}/sources.yaml"
+notif_agents_file = f"notification_agents.yaml"
 
 scrapers = {}
+sources = {}
 agents = {}
 ads = {}
-
-tasks = tasklib.load_tasks(tasks_file)
 
 if not os.path.exists(ads_file):
     with open(ads_file, "w") as stream:
@@ -46,6 +47,8 @@ if not os.path.exists(ads_file):
 with open(ads_file, "r") as stream:
     ads = yaml.safe_load(stream)
 
+tasks = tasklib.load_tasks(tasks_file)
+sources = sourcelib.load(sources_file)
 scrapers = scraperlib.get_scrapers(current_directory, "scrapers")
 agents = agentlib.get_agents(current_directory, notif_agents_file, "notification_agents")
 
@@ -215,14 +218,9 @@ def task_delete_cmd(args):
 # force - run task regardless if it is enabled or not
 # recent_ads - only show the latest N ads, set to 0 to disable
 def run_task(task, notify=True, force_tasks=False, force_agents=False, recent_ads=0):
-    scraper_name = task.source
-    scraper = scrapers[scraper_name]
-    url = task.url
     exclude_words = task.exclude
 
     log.info_print(f"Task: {task.name}")
-    log.info_print(f"Source: {task.source}")
-    log.info_print(f"URL: {task.url}")
 
     if task.enabled == False:
         if force_tasks == False:
@@ -232,18 +230,39 @@ def run_task(task, notify=True, force_tasks=False, force_agents=False, recent_ad
         else:
             log.info_print("Task disabled but forcing task to run...")
 
+    for source_id in task.source_ids:
+        task_notif_agents = []
+        for notif_agent_id in task.notif_agent_ids:
+            task_notif_agents.append(agents[notif_agent_id])
 
-    if len(task.include):
-        print(f"Including: {task.include}")
+        scrape_source(
+            sources[source_id],
+            task_notif_agents,
+            include=task.include,
+            exclude=task.exclude,
+            notify=notify,
+            force_tasks=force_tasks,
+            force_agents=force_agents,
+            recent_ads=recent_ads
+        )
 
-    if len(task.exclude):
-        print(f"Excluding: {task.exclude}")
+def scrape_source(source, notif_agents, include=[], exclude=[], notify=True, force_tasks=False, force_agents=False, recent_ads=0):
+    log.info_print(f"Source: {source.name}")
+    log.info_print(f"Module: {source.module}")
+    log.info_print(f"Module Properties: {source.module_properties}")
 
+    if len(include):
+        print(f"Including: {include}")
+
+    if len(exclude):
+        print(f"Excluding: {exclude}")
+
+    scraper = scrapers[source.module]
     old_ads = []
-    if scraper_name in ads:
-        old_ads = ads[scraper_name]
+    if source.module in ads:
+        old_ads = ads[source.module]
 
-    new_ads, ad_title = scraper.scrape_for_ads(url, old_ad_ids=old_ads, exclude_list=exclude_words)
+    new_ads, ad_title = scraper.scrape_for_ads(old_ads, exclude=exclude, **source.module_properties)
 
     info_string = f"Found {len(new_ads)} new ads" \
         if len(new_ads) != 1 else "Found 1 new ad"
@@ -260,26 +279,31 @@ def run_task(task, notify=True, force_tasks=False, force_agents=False, recent_ad
             # only notify the last notify_recent new_ads
             ads_to_send = get_recent_ads(recent_ads, new_ads)
 
-            log.info_print(f"Total ads being notified: {len(ads_to_send)}")
+            log.info_print(f"Total ads to notify about: {len(ads_to_send)}")
 
-        for agent in agents:
-            if agent.enabled or force_agents == True:
-                if agent.enabled == False and force_agents == True:
-                    log.info_print("Notification agent was disabled but forcing...")
-                log.info_print(f"Notifying agent: {agent.name}")
-                agent.module.send_ads(ads_to_send, ad_title)
-            else:
-                log.info_print(f"Skipping... Notification agent disabled: {agent.name}")
-            i = i + 1
+        if len(notif_agents) == 0:
+            log.warning_print("No notification agents set... nothing to notify")
+        else:
+            for agent in notif_agents:
+                if agent.enabled or force_agents == True:
+                    if agent.enabled == False and force_agents == True:
+                        log.info_print("Notification agent was disabled but forcing...")
+
+                    log.info_print(f"Notifying agent: {agent.name}")
+                    agent.module.send_ads(ads_to_send, ad_title)
+
+                else:
+                    log.info_print(f"Skipping... Notification agent disabled: {agent.name}")
+
+                i = i + 1
 
     elif not notify and num_ads:
         log.info_print("Skipping notification")
 
-    ads[scraper_name] =  scraper.old_ad_ids
+    ads[source.module] = scraper.old_ad_ids
     log.info_print(f"Total all-time processed ads: {len(scraper.old_ad_ids)}")
 
     print()
-
 
 def get_recent_ads(recent, ads):
     i = 0

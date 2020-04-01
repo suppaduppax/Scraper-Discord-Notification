@@ -35,6 +35,6 @@ def get_scrapers(directory, scraper_dir):
 
 #        module = refl.get_module(namespace)
         module_class_name, module_class = refl.get_class(module, namespace)
-        result[module_class_name] = module_class()
+        result[subdir] = module_class()
 
     return result
