@@ -12,7 +12,7 @@ class Source:
     def __init__(self, **kwargs):
         self.id = kwargs.get("id", str(uuid.uuid4()))
         self.name = kwargs.get("name", "New Source")
-        self.url = kwargs.get("url", "")
+#        self.url = kwargs.get("url", "")
         self.module = kwargs.get("module")
         self.module_properties = kwargs.get("module_properties")
     @staticmethod
@@ -43,7 +43,17 @@ def list_sources(sources):
         print_source(t)
         i = i+1
 
-def save_sources(sources, file, preserve_comments=True):
+def save(sources, file, preserve_comments=True):
+    if isinstance(sources, dict):
+        old_sources = sources
+        sources = []
+        for s in old_sources:
+            sources.append(old_sources[s])
+
+    elif isinstance(sources, list) == False:
+        raise ValueError(f"sources must by list or dict, not: {type(sources)}")
+
+
     if preserve_comments:
         # preserve comments in file
         with open(file, "r") as stream:

@@ -9,23 +9,16 @@ import inspect
 import reflection_lib as refl
 import logger_lib as log
 import uuid
+import re
 
 class notif_agent:
     enabled = True
 
-    def __init__(self, id, name, module_class, module_properties):
+    def __init__(self, id, name, module, module_properties):
         self.id = id
         self.name = name
-        self.module_class = module_class
+        self.module = module
         self.module_properties = module_properties
-        self.load_module()
-
-    def load_module(self):
-        if not self.module_class or not self.module_properties:
-            log.error_print("Cannot create notification agent module. Module class or module properties is empty or undefined")
-            return
-
-        self.module = self.module_class(self.module_properties)
 
 # looks for sub diretories inside "{directory}"
 # and inspects its contents for a "agent.py" file and grabs the class inside that file
@@ -56,7 +49,7 @@ def get_modules(directory, agent_dir):
 #        namespace = refl.path_to_namespace(path)
 #        module = refl.get_module(namespace)
         module_class_name, module_class = refl.get_class(module, namespace)
-        result[subdir] = module_class
+        result[subdir] = module_class()
 
     return result
 
@@ -72,20 +65,22 @@ def get_agents(directory, agents_file, modules_dir):
         agent = notif_agent(
                     c.get("id", str(uuid.uuid4())),
                     c.get("name"),
-                    modules[c.get("module")],
+                    c.get("module"),
                     c.get("module_properties")
                 )
 
         agent.enabled = c.get("enabled", True)
 
-        log.debug_print(f"Adding notification agent: {agent.id} {agent.name}")
+        log.debug(f"Adding notification agent: {agent.id} {agent.name}")
         result[agent.id] = agent
 
     return result
 
 def get_notif_agents_by_ids(notif_agents, ids):
+    print (ids)
     result = []
     for id in ids:
+        print (f"{id}: enabled: {notif_agents[id].enabled}")
         result.append(notif_agents[id])
 
     return result
@@ -99,9 +94,41 @@ def get_names(notif_agents):
     return names
 
 def get_enabled(agents):
+    print (agents)
     result = []
     for a in agents:
         if a.enabled:
             result.append(a)
 
     return result
+
+# <-- don't output yaml class tags
+def noop(self, *args, **kw):
+    pass
+
+yaml.emitter.Emitter.process_tag = noop
+
+def save(notif_agents, file, preserve_comments=False):
+    if isinstance(notif_agents, dict):
+        old_notif_agents = notif_agents
+        notif_agents = []
+        for s in old_notif_agents:
+            notif_agents.append(old_notif_agents[s])
+
+    elif isinstance(notif_agents, list) == False:
+        raise ValueError(f"notif_agents must by list or dict, not: {type(notif_agents)}")
+
+
+    if preserve_comments:
+        # preserve comments in file
+        with open(file, "r") as stream:
+            filestream = stream.read()
+
+        match = re.findall("([#][^\n]*[\n]|[#][\n])", filestream)
+
+    with open(file, "w") as stream:
+        if preserve_comments and match:
+            for m in match:
+                stream.write(m)
+
+        yaml.dump(notif_agents, stream, default_flow_style=False, sort_keys=False)

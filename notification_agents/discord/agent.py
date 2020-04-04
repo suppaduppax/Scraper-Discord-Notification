@@ -4,23 +4,41 @@ import logger_lib as log
 
 class DiscordClient():
 
-    def __init__(self, discord_config):
-        webhook = discord_config.get("webhook")
-        botname = discord_config.get("botname")
+    def get_properties(self):
+        return ["webhook", "botname"]
 
-        if not webhook:
-            log.error_print(f"Invalid or empty webhook: {webhook}")
-            raise TypeError(f"Invalid or empty webhook: {webhook}")
+    def is_property_valid(self, key, value):
+        if key == "webhook":
+            try:
+                discord.Webhook.from_url(value, adapter=discord.RequestsWebhookAdapter())
+                return True, None
+            except:
+                return False, "Webhook is invalid"
+        elif key == "botname":
+            if value == "" or value is None:
+                return False, "Botname cannot be empty"
+            else:
+                return True, None
+        else:
+            raise ValueError(f"Invalid property: {key}")
 
-        if not botname:
-            log.error_print(f"Invalid or empty botname: {botname}")
-            raise TypeError(f"Invalid or empty botname: {botname}")
-
-        self.webhook = discord.Webhook.from_url(webhook, adapter=discord.RequestsWebhookAdapter())
-        self.bot_name = botname
+        return False
 
     # Sends a Discord message with links and info of new ads
-    def send_ads(self, ad_dict, discord_title):
+    def send_ads(self, ad_dict, discord_title, **kwargs):
+        global webhook_cache
+
+        if not "webhook_cache" in globals():
+            webhook_cache = {}
+
+        webhook_url = kwargs["webhook"]
+        self.bot_name = kwargs["botname"]
+
+        if not webhook_url in webhook_cache:
+            webhook_cache[webhook_url] = discord.Webhook.from_url(webhook_url, adapter=discord.RequestsWebhookAdapter())
+
+        self.webhook = webhook_cache[webhook_url]
+
         title = self.__create_discord_title(discord_title, len(ad_dict))
 
         result = self.webhook.send(content=f"**{title}**", username=self.bot_name)
@@ -64,3 +82,4 @@ class DiscordClient():
             embed.title = f"{ad_dict[ad_id]['Title']}"
 
         return embed
+

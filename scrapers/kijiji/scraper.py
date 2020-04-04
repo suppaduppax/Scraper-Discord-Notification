@@ -21,6 +21,13 @@ class KijijiScraper():
         self.third_party_ads = []
         self.old_ad_ids = []
 
+    def get_properties(self):
+        return ["url"]
+
+
+    def validate_properties(self, **kwargs):
+        pass
+
     # Pulls page data from a given kijiji url and finds all ads on each page
     def scrape_for_ads(self, old_ad_ids, exclude=[], **kwargs):
         self.new_ads = {}

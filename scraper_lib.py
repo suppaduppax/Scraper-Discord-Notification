@@ -10,6 +10,16 @@ import inspect
 import reflection_lib as refl
 
 
+class BaseScraper():
+    def get_properties():
+        pass
+
+    def set_properties(props):
+        valid_props = get_properties()
+        for p in props:
+            if not p in valid_props:
+                raise ValueError(f"Invalid module property '{p}'")
+
 # looks for sub diretories inside "scrapers/"
 # and inspects its contents for a "scraper.py" file and grabs the class inside that file
 # PARAMS: scraper_ads - json of all the previously scraped files

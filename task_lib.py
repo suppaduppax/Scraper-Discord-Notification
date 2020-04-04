@@ -20,7 +20,7 @@ class Task:
             self.frequency = kwargs.get("frequency", 15)
             self.frequency_unit = kwargs.get("frequency_unit", "minutes")
             self.source_ids = kwargs.get("source_ids", [])
-            self.notif_agent_ids = kwargs.get("notification_agent_ids", [])
+            self.notif_agent_ids = kwargs.get("notif_agent_ids", [])
             self.include = kwargs.get("include", [])
             self.exclude = kwargs.get("exclude", [])
 
@@ -67,7 +67,7 @@ def list_tasks(tasks):
         print_task(t)
         i = i+1
 
-def save_tasks(tasks, file, preserve_comments=True):
+def save(tasks, file, preserve_comments=True):
     if preserve_comments:
         # preserve comments in file
         with open(file, "r") as stream:

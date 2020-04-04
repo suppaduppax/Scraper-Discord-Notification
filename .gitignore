@@ -7,9 +7,13 @@ config.yaml
 tasks.yaml
 settings.yaml
 ads.json
+sources.yaml
+notification_agents.yaml
+scrapers.yaml
 
 # logs
 logs/
 
 # Tests
 *test*
+*.bak

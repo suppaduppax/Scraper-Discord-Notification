@@ -25,6 +25,7 @@ import scraper_lib as scraperlib
 import task_lib as tasklib
 import source_lib as sourcelib
 import cron_lib as cronlib
+import creator_lib as creator
 
 import reflection_lib as refl
 import logger_lib as log
@@ -34,7 +35,8 @@ ads_file = f"{current_directory}/ads.json"
 tasks_file = f"{current_directory}/tasks.yaml"
 sources_file = f"{current_directory}/sources.yaml"
 notif_agents_file = f"notification_agents.yaml"
-
+notif_agents_dir = "notification_agents"
+scrapers_dir = "scrapers"
 scrapers = {}
 sources = {}
 agents = {}
@@ -50,7 +52,8 @@ with open(ads_file, "r") as stream:
 tasks = tasklib.load_tasks(tasks_file)
 sources = sourcelib.load(sources_file)
 scrapers = scraperlib.get_scrapers(current_directory, "scrapers")
-agents = agentlib.get_agents(current_directory, notif_agents_file, "notification_agents")
+agents = agentlib.get_agents(current_directory, notif_agents_file, notif_agents_dir)
+notif_agent_modules = agentlib.get_modules(current_directory, notif_agents_dir)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -69,10 +72,13 @@ def main():
     main_subparsers = parser.add_subparsers(dest="cmd")
 
     # task {name} {frequency} {frequency_unit}
-    main_sub = main_subparsers.add_parser("task")
-    task_subparsers = main_sub.add_subparsers(dest="task_cmd", required=True)
+    task_sub = main_subparsers.add_parser("task")
+    task_subparsers = task_sub.add_subparsers(dest="task_cmd", required=True)
 #    main_sub.add_argument("task_cmd", choices=["add", "delete", "list"])
     task_add = task_subparsers.add_parser("add", help="Add a new task")
+    task_delete = task_subparsers.add_parser("delete", help="Delete an existing task")
+    task_edit = task_subparsers.add_parser("edit", help="Edit an existing task")
+    """
     task_add.add_argument("-n", "--name", default="Untitled Task")
     task_add.add_argument("-s", "--source", required=True)
     task_add.add_argument("-u", "--url", required=True)
@@ -87,6 +93,19 @@ def main():
     task_delete.add_argument("index", type=int)
     task_delete.add_argument("--skip-confirm", action="store_true", help="Do not ask for confirmation")
     task_list = task_subparsers.add_parser("list", help="List all tasks")
+    """
+
+    source_sub = main_subparsers.add_parser("source")
+    source_subparsers = source_sub.add_subparsers(dest="source_cmd", required=True)
+    source_add = source_subparsers.add_parser("add", help="Add a new source")
+    source_delete = source_subparsers.add_parser("delete", help="Delete an existing source")
+    source_edit = source_subparsers.add_parser("edit", help="Edit an existing source")
+
+    notif_agent_sub = main_subparsers.add_parser("notification-agent")
+    notif_agent_subparsers = notif_agent_sub.add_subparsers(dest="notif_agent_cmd", required=True)
+    notif_agent_add = notif_agent_subparsers.add_parser("add", help="Add a new notif_agent")
+    notif_agent_add = notif_agent_subparsers.add_parser("delete", help="Delete a new notif_agent")
+    notif_agent_add = notif_agent_subparsers.add_parser("edit", help="Edit a new notif_agent")
 
     args = parser.parse_args()
 
@@ -107,7 +126,28 @@ def main():
             recent_ads=args.notify_recent)
 
     if args.cmd == "task":
-       task_cmd(args)
+        task_cmd(args)
+    elif args.cmd == "source":
+        source_cmd(args)
+    elif args.cmd == "notification-agent":
+        notif_agent_cmd(args)
+
+def notif_agent_cmd(args):
+    if args.notif_agent_cmd == "add":
+        creator.create_notif_agent(agents, agentlib.get_modules(current_directory, notif_agents_dir), notif_agents_file)
+    elif args.notif_agent_cmd == "edit":
+        creator.edit_notif_agent(agents, agentlib.get_modules(current_directory, notif_agents_dir), notif_agents_file)
+    elif args.notif_agent_cmd == "delete":
+        creator.delete_notif_agent(agents, notif_agents_file, tasks, tasks_file)
+
+def source_cmd(args):
+    if args.source_cmd == "add":
+        creator.create_source(sources, scrapers, sources_file)
+    elif args.source_cmd == "delete":
+        creator.delete_source(sources, sources_file, tasks, tasks_file)
+    elif args.source_cmd == "edit":
+        creator.edit_source(sources, scrapers, sources_file)
+
 
 def test_log():
     #log.addHandler(cron_loghandler)
@@ -132,6 +172,18 @@ def prime_all_tasks(args):
     save_ads()
 
 def task_cmd(args):
+    if (args.task_cmd == "add"):
+        creator.create_task(tasks, sources, tasks_file)
+        return
+
+    if (args.task_cmd == "delete"):
+        creator.delete_task(tasks, tasks_file)
+        return
+
+    if (args.task_cmd == "edit"):
+        creator.edit_task(tasks, sources, tasks_file)
+        return
+
     cmds = {
         "add" : task_add_cmd,
         "delete" : task_delete_cmd,
@@ -141,7 +193,7 @@ def task_cmd(args):
     if args.task_cmd in cmds:
         cmds[args.task_cmd](args)
     else:
-        log.error_print(f"Unknown task command: {args.args_cmd}")
+        log.error_print(f"Unknown task command: {args.task_cmd}")
 
 def task_list_cmd(args):
     tasklib.list_tasks(tasks)
@@ -228,6 +280,7 @@ def run_task(task, notify=True, force_tasks=False, force_agents=False, recent_ad
 
 
     task_notif_agents = agentlib.get_notif_agents_by_ids(agents, task.notif_agent_ids)
+    print (f"notif agents: {task_notif_agents}")
     if notify == True and force_agents == False:
         notif_agents_enabled_check(task_notif_agents)
 
@@ -288,7 +341,7 @@ def scrape_source(source, notif_agents, include=[], exclude=[], notify=True, for
                     if agent.enabled == False and force_agents == True:
                         log.info_print("Notification agent was disabled but forcing...")
 
-                    agent.module.send_ads(ads_to_send, ad_title)
+                    notif_agent_modules[agent.module].send_ads(ads_to_send, ad_title, **agent.module_properties)
 
                 else:
                     log.info_print(f"Skipping... Notification agent disabled: {agent.name}")
