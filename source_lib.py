@@ -202,8 +202,11 @@ def create_source(cur_sources, scrapers, file, edit_source=None):
 
 def edit_source(cur_sources, scrapers, file):
     creator.print_title("Edit Source")
-    source = creator.prompt_complex_dict("Choose a source", cur_sources, "name")
-    create_source(cur_sources, scrapers, file, edit_source=source)
+    source = creator.prompt_complex_dict("Choose a source", cur_sources, "name", extra_options=["d"], extra_options_desc=["done"])
+    if source == "d":
+        return
+    else:
+        create_source(cur_sources, scrapers, file, edit_source=source)
 
 def delete_source(sources_dict, sources_file, tasks_list, tasks_file):
     creator.print_title("Delete Source")
@@ -218,7 +221,9 @@ def delete_source(sources_dict, sources_file, tasks_list, tasks_file):
         for i in range(len(sources_list)):
             print(f"{i} - {sources_list[i].name} [id: {sources_list[i].id}]")
 
-        print ("(s)ave and quit, (q)uit without saving")
+        print ("s - save and quit")
+        print ("q - quit without saving")
+
         tnum_str = creator.prompt_string("Delete source")
         if tnum_str == "s":
             save = True

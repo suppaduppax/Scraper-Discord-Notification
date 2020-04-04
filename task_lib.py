@@ -279,8 +279,11 @@ def create_task(cur_tasks, sources, file, edit_task=None):
 
 def edit_task(cur_tasks, sources, file):
     creator.print_title("Edit Task")
-    task = creator.prompt_complex_list("Choose a task", cur_tasks, "name" )
-    create_task(cur_tasks, sources, file, task)
+    task = creator.prompt_complex_list("Choose a task", cur_tasks, "name", extra_options=["d"], extra_options_desc=["done"])
+    if task == "d":
+        return
+    else:
+        create_task(cur_tasks, sources, file, task)
 
 def delete_task(tasks_list, file):
     creator.print_title("Delete Task")

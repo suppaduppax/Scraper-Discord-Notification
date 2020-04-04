@@ -220,8 +220,11 @@ def create_notif_agent(cur_notif_agents, modules, file, edit_notif_agent=None):
 
 def edit_notif_agent(cur_notif_agents, modules, file):
     creator.print_title("Edit Notification Agent")
-    notif_agent = creator.prompt_complex_dict("Choose a notification agent", cur_notif_agents, "name")
-    create_notif_agent(cur_notif_agents, modules, file, edit_notif_agent=notif_agent)
+    notif_agent = creator.prompt_complex_dict("Choose a notification agent", cur_notif_agents, "name", extra_options=["d"], extra_options_desc=["done"])
+    if notif_agent == "d":
+        return
+    else:
+        create_notif_agent(cur_notif_agents, modules, file, edit_notif_agent=notif_agent)
 
 def delete_notif_agent(notif_agents_dict, notif_agents_file, tasks_list, tasks_file):
     creator.print_title("Delete Notification Agent")
@@ -236,7 +239,9 @@ def delete_notif_agent(notif_agents_dict, notif_agents_file, tasks_list, tasks_f
         for i in range(len(notif_agents_list)):
             print(f"{i} - {notif_agents_list[i].name} [id: {notif_agents_list[i].id}]")
 
-        print ("(s)ave and quit, (q)uit without saving")
+        print ("s - save and quit")
+        print ("q - quit without saving")
+
         tnum_str = creator.prompt_string("Delete notif_agent")
         if tnum_str == "s":
             save = True
