@@ -25,7 +25,7 @@ import scraper_lib as scraperlib
 import task_lib as tasklib
 import source_lib as sourcelib
 import cron_lib as cronlib
-import creator_lib as creator
+import creator_utils_lib as creator
 
 import reflection_lib as refl
 import logger_lib as log
@@ -134,19 +134,19 @@ def main():
 
 def notif_agent_cmd(args):
     if args.notif_agent_cmd == "add":
-        creator.create_notif_agent(agents, agentlib.get_modules(current_directory, notif_agents_dir), notif_agents_file)
+        agentlib.create_notif_agent(agents, agentlib.get_modules(current_directory, notif_agents_dir), notif_agents_file)
     elif args.notif_agent_cmd == "edit":
-        creator.edit_notif_agent(agents, agentlib.get_modules(current_directory, notif_agents_dir), notif_agents_file)
+        agentlib.edit_notif_agent(agents, agentlib.get_modules(current_directory, notif_agents_dir), notif_agents_file)
     elif args.notif_agent_cmd == "delete":
-        creator.delete_notif_agent(agents, notif_agents_file, tasks, tasks_file)
+        agentlib.delete_notif_agent(agents, notif_agents_file, tasks, tasks_file)
 
 def source_cmd(args):
     if args.source_cmd == "add":
-        creator.create_source(sources, scrapers, sources_file)
+        sourcelib.create_source(sources, scrapers, sources_file)
     elif args.source_cmd == "delete":
-        creator.delete_source(sources, sources_file, tasks, tasks_file)
+        sourcelib.delete_source(sources, sources_file, tasks, tasks_file)
     elif args.source_cmd == "edit":
-        creator.edit_source(sources, scrapers, sources_file)
+        sourcelib.edit_source(sources, scrapers, sources_file)
 
 
 def test_log():
@@ -173,15 +173,15 @@ def prime_all_tasks(args):
 
 def task_cmd(args):
     if (args.task_cmd == "add"):
-        creator.create_task(tasks, sources, tasks_file)
+        tasklib.create_task(tasks, sources, tasks_file)
         return
 
     if (args.task_cmd == "delete"):
-        creator.delete_task(tasks, tasks_file)
+        tasklib.delete_task(tasks, tasks_file)
         return
 
     if (args.task_cmd == "edit"):
-        creator.edit_task(tasks, sources, tasks_file)
+        tasklib.edit_task(tasks, sources, tasks_file)
         return
 
     cmds = {
