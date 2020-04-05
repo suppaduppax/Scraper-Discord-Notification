@@ -3,7 +3,7 @@
 import yaml
 import sys
 import os
-import importlib
+from importlib import util, machinery
 #import json
 import inspect
 import reflection_lib as refl
@@ -41,10 +41,10 @@ def get_modules(directory, agent_dir):
             continue
 
         namespace = refl.path_to_namespace(f"{agent_dir}/{subdir}/{filename}")
-        finder = importlib.machinery.PathFinder()
-        spec = importlib.util.find_spec(f"{namespace}")
-        #spec = importlib.machinery.find_spec(f"{path}")
-        module = importlib.util.module_from_spec(spec)
+        finder = machinery.PathFinder()
+        spec = util.find_spec(f"{namespace}")
+        #spec = machinery.find_spec(f"{path}")
+        module = util.module_from_spec(spec)
 #        sys.modules[module_name] = module
         spec.loader.exec_module(module)
 
