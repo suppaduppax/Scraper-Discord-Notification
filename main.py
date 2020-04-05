@@ -259,7 +259,7 @@ def task_delete_cmd(args):
 
 # force - run task regardless if it is enabled or not
 # recent_ads - only show the latest N ads, set to 0 to disable
-def run_task(task, notify=True, force_tasks=False, force_agents=False, recent_ads=0, save_ads=False):
+def run_task(task, notify=True, force_tasks=False, force_agents=False, recent_ads=0, save_ads=True):
     exclude_words = task.exclude
 
     log.info_print(f"Task: {task.name}")
@@ -290,7 +290,7 @@ def run_task(task, notify=True, force_tasks=False, force_agents=False, recent_ad
             save_ads=save_ads
         )
 
-def scrape_source(source, notif_agents, include=[], exclude=[], notify=True, force_tasks=False, force_agents=False, recent_ads=0, save_ads=False):
+def scrape_source(source, notif_agents, include=[], exclude=[], notify=True, force_tasks=False, force_agents=False, recent_ads=0, save_ads=True):
     log.info_print(f"Source: {source.name}")
     log.info_print(f"Module: {source.module}")
     log.info_print(f"Module Properties: {source.module_properties}")
