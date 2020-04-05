@@ -72,13 +72,13 @@ a schedule.
 After saving a task, you will be asked if you want to do a dry-run.
 Doing a dry run allows you to test if your task works properly without saving or notifying about any ads.
 
-<h2>Cron</h2>
 When you are finished testing, you can prime your task to cache the first
 round of ads to prevent a large spam of hits on your notitication agent.
 By default, you will receive the 3 most recent ads in the priming.
 Any future runs of your task will send notifications as normal.
 
-When priming is done you will be asked if you want to create a cron
+<h2>Cron</h2>
+At the very end of task creation you will be asked if you want to create a cron
 job for your task. 
 
 This will use the frequency of the task you set previously.
