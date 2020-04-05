@@ -32,10 +32,14 @@ Give main.py executable permissions.
 Give ads.json write permissions so that old ads can be stored.
 >$ sudo chmod a+w /github/Scraper-Discord-Notification/ads.json
 
-<h3>Get a Discord Webhook</h3>
+**Get a Discord Webhook**
 
+You will need a webhook when making your notification agent, get this ready.
 Check out: https://support.discordapp.com/hc/en-us/articles/228383668-Intro-to-Webhooks
 
+**Get a search URL**
+
+You will need this when making a source, get this ready as well.
 To get a search URL, go to http://www.kijiji.ca and use the search box for the item you're looking for.
 
 ![Kijiji - Search](https://user-images.githubusercontent.com/58180427/69773229-dd3fe300-1157-11ea-884c-5f5c12b3f874.png)
@@ -44,11 +48,10 @@ Use any of the filters on the left hand side of the page to narrow down your sea
 
 ![Kijiji - URL](https://user-images.githubusercontent.com/58180427/69773238-e16c0080-1157-11ea-8105-797037bb5687.png)
 
-<h2>Initial Start-Up</h2>
-
 **Add a Notification Agent**
+
 >$ sudo python3 main.py notification-agent add
- 
+
 Notification agents are what will be used to notify you when new ads are found.
 Right now, only discord is supported more will he more added in the future.
  
