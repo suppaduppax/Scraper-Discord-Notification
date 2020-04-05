@@ -221,6 +221,9 @@ def create_task_add_notif_agents(notif_agents_dict, default=None):
     if default is not None:
         first = True
         for s in default:
+            if not s in notif_agents_dict:
+                continue
+
             if first:
                 default_str = f"[{notif_agents_dict[s].name}"
                 first = False
