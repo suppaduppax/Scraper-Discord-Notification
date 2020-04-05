@@ -53,7 +53,7 @@ Use any of the filters on the left hand side of the page to narrow down your sea
 Notification agents are what will be used to notify you when new ads are found.
 Right now, only discord is supported more will he more added in the future.
  
-<h3>Add a Source</h3>
+<h2>Add a Source</h2>
 >$ sudo python3 main.py source add
  
 Sources contain the configuration that will be used when doing the actual scraping. Right
