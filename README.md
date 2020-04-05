@@ -15,8 +15,12 @@ Make sure that your machine is up to date.
 
 >$ sudo apt upgrade
 
-Use git to pull the repository files to your machine in the /github/ directory:
->$ sudo git clone https://github.com/suppaduppax/Scraper-Discord-Notification.git
+Install git if it is not already installed.
+
+>$ sudo apt install git
+
+Use git to pull the repository files to your machine, for this example we will put it in the /github/ directory:
+>$ sudo git clone https://github.com/suppaduppax/Scraper-Discord-Notification.git /github/Scraper-Discord-Notification/
 
 Install some required packages:
 >$ sudo apt install python3-pip python3-bs4
@@ -28,9 +32,6 @@ Install some required packages for python:
 
 Give main.py executable permissions.
 >$ sudo chmod +x /github/Scraper-Discord-Notification/main.py
-
-Give ads.json write permissions so that old ads can be stored.
->$ sudo chmod a+w /github/Scraper-Discord-Notification/ads.json
 
 **Get a Discord Webhook**
 
@@ -50,19 +51,19 @@ Use any of the filters on the left hand side of the page to narrow down your sea
 
 **Add a Notification Agent**
 
->$ sudo python3 main.py notification-agent add
+>$ python3 /github/Scraper-Discord-Notification/main.py notification-agent add
 
 Notification agents are what will be used to notify you when new ads are found.
 Right now, only discord is supported more will he more added in the future.
  
 **Add a Source**
->$ sudo python3 main.py source add
+>$ python3 /github/Scraper-Discord-Notification/main.py source add
  
 Sources contain the configuration that will be used when doing the actual scraping. Right
 now only the kijiji module is supported but more will be added in the future.
 
 **Add a Task**
->$ sudo python3 main.py task add
+>$ python3 /github/Scraper-Discord-Notification/main.py task add
  
 Tasks are what executes the scraping process and runs the notification.
 You can set the frequency of these tasks which will use cron to run them on
