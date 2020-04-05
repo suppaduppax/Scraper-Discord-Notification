@@ -181,7 +181,7 @@ def prime_all_tasks(args):
 
 def task_cmd(args):
     if (args.task_cmd == "add"):
-        tasklib.create_task(tasks, sources, tasks_file)
+        tasklib.create_task(tasks, sources, agents, tasks_file)
         return
 
     if (args.task_cmd == "delete"):
@@ -189,7 +189,7 @@ def task_cmd(args):
         return
 
     if (args.task_cmd == "edit"):
-        tasklib.edit_task(tasks, sources, tasks_file)
+        tasklib.edit_task(tasks, sources, agents, tasks_file)
         return
 
     cmds = {
