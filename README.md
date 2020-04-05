@@ -8,7 +8,6 @@ A lot of credit goes to @CRutkowski for his Kijiji-Scraper project (https://gith
 
 ![Scraper - Notification - Embed](https://user-images.githubusercontent.com/58180427/69883816-73c8ed00-129b-11ea-9dd8-c02a9fbb76e2.png)
 
-
 <h2>Installation</h2>
 
 Make sure that your machine is up to date.
@@ -47,26 +46,26 @@ Use any of the filters on the left hand side of the page to narrow down your sea
 
 <h2>Initial Start-Up</h2>
 
-<h3>Add a Notification Agent</h3>
+Add a Notification Agent
 >$ sudo python3 main.py notification-agent add
  
 Notification agents are what will be used to notify you when new ads are found.
 Right now, only discord is supported more will he more added in the future.
  
-<h2>Add a Source</h2>
+Add a Source
 >$ sudo python3 main.py source add
  
 Sources contain the configuration that will be used when doing the actual scraping. Right
 now only the kijiji module is supported but more will be added in the future.
 
-<h3>Add a Task</h3>
+Add a Task
 >$ sudo python3 main.py task add
  
 Tasks are what executes the scraping process and runs the notification.
 You can set the frequency of these tasks which will use cron to run them on
 a schedule.
 
-<h3>Dry-runs and Priming</h3>
+<h2>Dry-runs and Priming</h2>
 After saving a task, you will be asked if you want to do a dry-run.
 Doing a dry run allows you to test if your task works properly without saving or notifying about any ads.
 
