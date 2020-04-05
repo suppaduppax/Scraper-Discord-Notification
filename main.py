@@ -55,17 +55,18 @@ scrapers = scraperlib.get_scrapers(current_directory, "scrapers")
 agents = agentlib.get_agents(current_directory, notif_agents_file, notif_agents_dir)
 notif_agent_modules = agentlib.get_modules(current_directory, notif_agents_dir)
 
-
-
 def main():
     parser = argparse.ArgumentParser()
     notify_group = parser.add_mutually_exclusive_group()
     notify_group.add_argument("-s", "--skip-notification", action="store_true", default=False)
-    notify_group.add_argument("--notify-recent", type=int, default=settings.get("recent_ads"), help=f"Only notify only most recent \# of ads. Default is {settings.get('recent_ads')}")
+    if settings.get("recent_ads") == 0:
+        recent_ads_help = "Only notify only most recent \# of ads. Default is infinite (0)"
+    else:
+        recent_ads_help = f"Only notify only most recent \# of ads. Default is {settings.get('recent_ads')}"
 
-    parser.add_argument("--test-log", action="store_true")
-    parser.add_argument("--force-tasks", action="store_true")
-    parser.add_argument("--force-notification-agents", action="store_true")
+    notify_group.add_argument("--notify-recent", type=int, default=settings.get("recent_ads"), help=f"Only notify only most recent \# of ads. Default is {settings.get('recent_ads')}")    
+    parser.add_argument("--force-tasks", action="store_true", help="Force tasks to run even if they are disabled")
+    parser.add_argument("--force-notification-agents", action="store_true", help="Force notification agents to be used even when disabled")
 
     main_args = parser.add_mutually_exclusive_group()
     main_args.add_argument("-c", "--cron-job", nargs=2, metavar=('INTEGER','minutes|hours'))
@@ -76,26 +77,9 @@ def main():
     # task {name} {frequency} {frequency_unit}
     task_sub = main_subparsers.add_parser("task")
     task_subparsers = task_sub.add_subparsers(dest="task_cmd", required=True)
-#    main_sub.add_argument("task_cmd", choices=["add", "delete", "list"])
     task_add = task_subparsers.add_parser("add", help="Add a new task")
     task_delete = task_subparsers.add_parser("delete", help="Delete an existing task")
     task_edit = task_subparsers.add_parser("edit", help="Edit an existing task")
-    """
-    task_add.add_argument("-n", "--name", default="Untitled Task")
-    task_add.add_argument("-s", "--source", required=True)
-    task_add.add_argument("-u", "--url", required=True)
-    task_add.add_argument("-f", "--frequency", type=int, required=True)
-    task_add.add_argument("-F", "--frequency_unit", choices=["minutes", "hours"], required=True)
-    task_add.add_argument("-i", "--include", nargs="+", default=[], required=True)
-    task_add.add_argument("-x", "--exclude", nargs="+", default=[])
-    task_add.add_argument("--skip-confirm", action="store_true", help="Do not ask for confirmation")
-    task_add.add_argument("--prime-ads", type=bool, help="Prime ads file after creation. Will prompt if unset")
-
-    task_delete = task_subparsers.add_parser("delete", help="Prime ads after creating task. Will prompt if unset")
-    task_delete.add_argument("index", type=int)
-    task_delete.add_argument("--skip-confirm", action="store_true", help="Do not ask for confirmation")
-    task_list = task_subparsers.add_parser("list", help="List all tasks")
-    """
 
     source_sub = main_subparsers.add_parser("source")
     source_subparsers = source_sub.add_subparsers(dest="source_cmd", required=True)
@@ -110,9 +94,6 @@ def main():
     notif_agent_add = notif_agent_subparsers.add_parser("edit", help="Edit a new notif_agent")
 
     args = parser.parse_args()
-
-    if args.test_log:
-        test_log()
 
     if args.prime_all_tasks:
         prime_all_tasks(args)
@@ -170,8 +151,13 @@ def refresh_cron():
 def dry_run(task):
     run_task(task, notify=False, force_tasks=True, save_ads=False)
 
-def prime_task(recent_ads = settings.get("recent_ads")):
-    run_task(task, notify=False, recent_ads=recent_ads)
+def prime_task(task, recent_ads = settings.get("recent_ads")):
+    if recent_ads > 0:
+        notify = True
+    else:
+        notify = False
+
+    run_task(task, notify=notify, recent_ads=recent_ads)
 
 def prime_all_tasks(args):
     for task in tasks:
@@ -274,9 +260,6 @@ def task_delete_cmd(args):
 # force - run task regardless if it is enabled or not
 # recent_ads - only show the latest N ads, set to 0 to disable
 def run_task(task, notify=True, force_tasks=False, force_agents=False, recent_ads=0, save_ads=False):
-    print (globals())
-    global agents, sources
-
     exclude_words = task.exclude
 
     log.info_print(f"Task: {task.name}")
@@ -291,7 +274,6 @@ def run_task(task, notify=True, force_tasks=False, force_agents=False, recent_ad
 
 
     task_notif_agents = agentlib.get_notif_agents_by_ids(agents, task.notif_agent_ids)
-    print (f"notif agents: {task_notif_agents}")
     if notify == True and force_agents == False:
         notif_agents_enabled_check(task_notif_agents)
 
@@ -309,8 +291,6 @@ def run_task(task, notify=True, force_tasks=False, force_agents=False, recent_ad
         )
 
 def scrape_source(source, notif_agents, include=[], exclude=[], notify=True, force_tasks=False, force_agents=False, recent_ads=0, save_ads=False):
-    global scrapers, notif_agent_modules, ads
-
     log.info_print(f"Source: {source.name}")
     log.info_print(f"Module: {source.module}")
     log.info_print(f"Module Properties: {source.module_properties}")
@@ -368,7 +348,8 @@ def scrape_source(source, notif_agents, include=[], exclude=[], notify=True, for
     if save_ads:
         ads[source.module] = scraper.old_ad_ids
         log.debug_print(f"Total all-time processed ads: {len(scraper.old_ad_ids)}")
-
+    else:
+        log.info_print(f"Saving ads disabled. Skipping...")
     print()
 
 def get_recent_ads(recent, ads):
