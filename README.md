@@ -87,6 +87,11 @@ any new tasks new tasks with a different frequency will create a new cron
 job. If there all jobs with the same frequency are deleted, the cronjob matching
 that frequency will also be deleted
 
+<h2>Settings</h2>
+There is only a couple of implemented settings in the 'settings.yaml' file.
+log_rotation_files - the number of files to rotate in logs/
+recent_ads - the number of ads to notify about when running a task. 0 disables this and will show an infinite number of ads
+
 <h2>Commands</h2>
 Use the help command to see what commands are available
 >$ python3 main.py --help 
