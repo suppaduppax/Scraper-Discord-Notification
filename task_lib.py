@@ -8,6 +8,7 @@ import subprocess
 import re
 
 import creator_utils_lib as creator
+import cron_lib as cronlib
 
 minute="minute"
 hour="hour"
@@ -123,88 +124,109 @@ if __name__ == "__main__":
     save_tasks(t, "tasks.yaml", "tasks.yaml")
 
 def task_creator(cur_tasks, sources, file, edit_task=None):
-    t = {}
-    if edit_task:
-        e = edit_task
-        old_task_name = e.name
-        t["name"] = e.name
-        t["freq"] = e.frequency
-        t["frequ"] = e.frequency_unit
-        t["sources"] = e.source_ids
-        if len(e.include):
-            t["include"] = ",".join(e.include)
-        else:
-            t["include"] = ""
-
-        if len(e.exclude):
-            t["exclude"] = ",".join(e.exclude)
-        else:
-            t["exclude"] = ""
-
-
     while True:
-        t["name"] = creator.prompt_string("Name", default=t.get("name", None))
-        t["freq"] = creator.prompt_num("Frequency", default=t.get("freq", 15))
-        t["frequ"] = creator.prompt_options("Frequency Unit", ["minutes", "hours"], default=t.get("frequ", "minutes"))
-        t["sources"] = create_task_add_sources(sources, default=t.get("sources", None))
-        t["include"] = creator.prompt_string("Include [list seperated by commas]", allow_empty=True, default=t.get("include", None))
-        t["exclude"] = creator.prompt_string("exclude [list seperated by commas]", allow_empty=True, default=t.get("exclude", None))
+        t = {}
+        if edit_task:
+            e = edit_task
+            old_task_name = e.name
+            t["name"] = e.name
+            t["freq"] = e.frequency
+            t["frequ"] = e.frequency_unit
+            t["sources"] = e.source_ids
+            if len(e.include):
+                t["include"] = ",".join(e.include)
+            else:
+                t["include"] = ""
 
-        print()
-        print(f"Name: {t['name']}")
-        print(f"Frequency: {t['freq']} {t['frequ']}")
-        print(f"Sources")
-        print(f"----------------------------")
-        for s in t["sources"]:
-            print(f"{sources[s].name}")
-        print("-----------------------------")
-        print(f"Include: {t['include']}")
-        print(f"Exclude: {t['exclude']}")
+            if len(e.exclude):
+                t["exclude"] = ",".join(e.exclude)
+            else:
+                t["exclude"] = ""
+        while True:
+            t["name"] = creator.prompt_string("Name", default=t.get("name", None))
+            t["freq"] = creator.prompt_num("Frequency", default=t.get("freq", 15))
+            t["frequ"] = creator.prompt_options("Frequency Unit", ["minutes", "hours"], default=t.get("frequ", "minutes"))
+            t["sources"] = create_task_add_sources(sources, default=t.get("sources", None))
+            t["include"] = creator.prompt_string("Include [list seperated by commas]", allow_empty=True, default=t.get("include", None))
+            t["exclude"] = creator.prompt_string("exclude [list seperated by commas]", allow_empty=True, default=t.get("exclude", None))
+    
+            print()
+            print(f"Name: {t['name']}")
+            print(f"Frequency: {t['freq']} {t['frequ']}")
+            print(f"Sources")
+            print(f"----------------------------")
+            for s in t["sources"]:
+                print(f"{sources[s].name}")
+            print("-----------------------------")
+            print(f"Include: {t['include']}")
+            print(f"Exclude: {t['exclude']}")
+    
+            """
+            if edit_task is None:
+                confirm_msg = "Create this task"
+            else:
+                confirm_msg = f"Save changes to task '{old_task_name}'"
+    
+            confirm = creator.prompt_options(confirm_msg, ["y", "n", "quit"])
+            """
+    
+            confirm = creator.prompt_options("Choose an option", ["save", "edit"])
+    
+            if confirm == "save":
+                break
+            elif confirm == "edit":
+                continue
+            elif confirm == "quit":
+                return
 
-        """
+        if t["include"] != "":
+            t["include"] = t["include"].split(",")
+
+        if t["exclude"] != "":
+            t["exclude"] = t["exclude"].split(",")
+
         if edit_task is None:
-            confirm_msg = "Create this task"
+            task = Task(
+                name=t["name"],
+                frequency=t["freq"],
+                frequency_unit=t["frequ"],
+                source_ids=t["sources"],
+                include=t["include"],
+                exclude=t["exclude"]
+            )
+            cur_tasks.append(task)
         else:
-            confirm_msg = f"Save changes to task '{old_task_name}'"
+            e = edit_task
+            e.name = t["name"]
+            e.frequency = t["freq"]
+            e.frequency_unit = t["frequ"]
+            e.source_ids = t["sources"]
+            e.include = t["include"].split(",")
+            e.exclude = t["include"].split(",")
+            task = edit_task
 
-        confirm = creator.prompt_options(confirm_msg, ["y", "n", "quit"])
-        """
+        save(cur_tasks, file)
 
-        confirm = creator.prompt_options("Choose an option", ["save", "edit", "quit"])
+        from main import dry_run, prime_task
+        if creator.yes_no("Test this task with a dry run", "y"):
+            while True:
+                dry_run(task)
 
-        if confirm == "save":
-            break
-        elif confirm == "edit":
-            continue
-        elif confirm == "quit":
-            return
+                confirm = creator.prompt_options("Choose an option", ["edit", "done"])
+                if confirm == "edit":
+                    continue
+                else:
+                    break
 
-    if t["include"] != "":
-        t["include"] = t["include"].split(",")
+        if creator.yes_no("Prime this task?", "y"):
+            recent_ads = prompt_number("How many of the latest ads do you want notified?", "3")
+            prime_task (task, recent_ads=int(recent_ads))
 
-    if t["exclude"] != "":
-        t["exclude"] = t["exclude"].split(",")
 
-    if edit_task is None:
-        task = Task(
-            name=t["name"],
-            frequency=t["freq"],
-            frequency_unit=t["frequ"],
-            source_ids=t["sources"],
-            include=t["include"],
-            exclude=t["exclude"]
-        )
-        cur_tasks.append(task)
-    else:
-        e = edit_task
-        e.name = t["name"]
-        e.frequency = t["freq"]
-        e.frequency_unit = t["frequ"]
-        e.source_ids = t["sources"]
-        e.include = t["include"].split(",")
-        e.exclude = t["include"].split(",")
+        if creator.yes_no("Add this task to cron", "y"):
+            cronlib.add(task.frequency, task.frequency_unit)
 
-    save(cur_tasks, file)
+        print ("Done!")
 
 def create_task_add_sources(sources_dict, default=None):
     default_str = ""

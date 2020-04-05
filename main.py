@@ -17,8 +17,9 @@ current_directory = os.path.dirname(os.path.realpath(__file__))
 
 # import settings file first so other modules can use settings
 import settings_lib as settings
-settings_file = current_directory + "/settings.yaml"
-settings.load(settings_file)
+if __name__ == "__main__":
+    settings_file = current_directory + "/settings.yaml"
+    settings.load(settings_file)
 
 import notification_agent_lib as agentlib
 import scraper_lib as scraperlib
@@ -29,7 +30,6 @@ import creator_utils_lib as creator
 
 import reflection_lib as refl
 import logger_lib as log
-
 
 ads_file = f"{current_directory}/ads.json"
 tasks_file = f"{current_directory}/tasks.yaml"
@@ -44,7 +44,7 @@ ads = {}
 
 if not os.path.exists(ads_file):
     with open(ads_file, "w") as stream:
-        stream.write("{}")
+        stream.write("{}")  
 
 with open(ads_file, "r") as stream:
     ads = yaml.safe_load(stream)
@@ -54,6 +54,8 @@ sources = sourcelib.load(sources_file)
 scrapers = scraperlib.get_scrapers(current_directory, "scrapers")
 agents = agentlib.get_agents(current_directory, notif_agents_file, notif_agents_dir)
 notif_agent_modules = agentlib.get_modules(current_directory, notif_agents_dir)
+
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -165,6 +167,12 @@ def refresh_cron():
 
         cronlib.add(t.frequency, t.frequency_unit)
 
+def dry_run(task):
+    run_task(task, notify=False, force_tasks=True, save_ads=False)
+
+def prime_task(recent_ads = settings.get("recent_ads")):
+    run_task(task, notify=False, recent_ads=recent_ads)
+
 def prime_all_tasks(args):
     for task in tasks:
         run_task(task, notify=not args.skip_notification, recent_ads=args.notify_recent)
@@ -265,7 +273,10 @@ def task_delete_cmd(args):
 
 # force - run task regardless if it is enabled or not
 # recent_ads - only show the latest N ads, set to 0 to disable
-def run_task(task, notify=True, force_tasks=False, force_agents=False, recent_ads=0):
+def run_task(task, notify=True, force_tasks=False, force_agents=False, recent_ads=0, save_ads=False):
+    print (globals())
+    global agents, sources
+
     exclude_words = task.exclude
 
     log.info_print(f"Task: {task.name}")
@@ -293,10 +304,13 @@ def run_task(task, notify=True, force_tasks=False, force_agents=False, recent_ad
             notify=notify,
             force_tasks=force_tasks,
             force_agents=force_agents,
-            recent_ads=recent_ads
+            recent_ads=recent_ads,
+            save_ads=save_ads
         )
 
-def scrape_source(source, notif_agents, include=[], exclude=[], notify=True, force_tasks=False, force_agents=False, recent_ads=0):
+def scrape_source(source, notif_agents, include=[], exclude=[], notify=True, force_tasks=False, force_agents=False, recent_ads=0, save_ads=False):
+    global scrapers, notif_agent_modules, ads
+
     log.info_print(f"Source: {source.name}")
     log.info_print(f"Module: {source.module}")
     log.info_print(f"Module Properties: {source.module_properties}")
@@ -351,8 +365,9 @@ def scrape_source(source, notif_agents, include=[], exclude=[], notify=True, for
     elif not notify and num_ads:
         log.info_print("Skipping notification")
 
-    ads[source.module] = scraper.old_ad_ids
-    log.debug_print(f"Total all-time processed ads: {len(scraper.old_ad_ids)}")
+    if save_ads:
+        ads[source.module] = scraper.old_ad_ids
+        log.debug_print(f"Total all-time processed ads: {len(scraper.old_ad_ids)}")
 
     print()
 
