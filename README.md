@@ -46,19 +46,19 @@ Use any of the filters on the left hand side of the page to narrow down your sea
 
 <h2>Initial Start-Up</h2>
 
-Add a Notification Agent
+**Add a Notification Agent**
 >$ sudo python3 main.py notification-agent add
  
 Notification agents are what will be used to notify you when new ads are found.
 Right now, only discord is supported more will he more added in the future.
  
-Add a Source
+**Add a Source**
 >$ sudo python3 main.py source add
  
 Sources contain the configuration that will be used when doing the actual scraping. Right
 now only the kijiji module is supported but more will be added in the future.
 
-Add a Task
+**Add a Task**
 >$ sudo python3 main.py task add
  
 Tasks are what executes the scraping process and runs the notification.
@@ -69,7 +69,7 @@ a schedule.
 After saving a task, you will be asked if you want to do a dry-run.
 Doing a dry run allows you to test if your task works properly without saving or notifying about any ads.
 
-<h3>Cron</h3>
+<h2>Cron</h2>
 When you are finished testing, you can prime your task to cache the first
 round of ads to prevent a large spam of hits on your notitication agent.
 By default, you will receive the 3 most recent ads in the priming.
@@ -84,6 +84,6 @@ any new tasks new tasks with a different frequency will create a new cron
 job. If there all jobs with the same frequency are deleted, the cronjob matching
 that frequency will also be deleted
 
-<h3>Commands</h3>
+<h2>Commands</h2>
 Use the help command to see what commands are available
 >$ python3 main.py --help 
