@@ -8,7 +8,11 @@ import subprocess
 import re
 
 import creator_utils_lib as creator
+
+import cron_lib as cronlib
+
 import logger_lib as log
+
 
 minute="minute"
 hour="hour"
@@ -124,178 +128,136 @@ if __name__ == "__main__":
     save_tasks(t, "tasks.yaml", "tasks.yaml")
 
 def task_creator(cur_tasks, sources, notif_agents, file, edit_task=None):
-    t = {}
-    if edit_task:
-        e = edit_task
-        old_task_name = e.name
-        t["name"] = e.name
-        t["freq"] = e.frequency
-        t["frequ"] = e.frequency_unit
-        t["sources"] = e.source_ids
-        if len(e.include):
-            t["include"] = ",".join(e.include)
-        else:
-            t["include"] = ""
-
-        if len(e.exclude):
-            t["exclude"] = ",".join(e.exclude)
-        else:
-            t["exclude"] = ""
-        t["notif_agents"] = e.notif_agent_ids
-
+    from main import dry_run, prime_task
 
     while True:
-        t["name"] = creator.prompt_string("Name", default=t.get("name", None))
-        t["freq"] = creator.prompt_num("Frequency", default=t.get("freq", 15))
-        t["frequ"] = creator.prompt_options("Frequency Unit", ["minutes", "hours"], default=t.get("frequ", "minutes"))
-        t["sources"] = create_task_add_sources(sources, default=t.get("sources", None))
-        t["include"] = creator.prompt_string("Include [list seperated by commas]", allow_empty=True, default=t.get("include", None))
-        t["exclude"] = creator.prompt_string("Exclude [list seperated by commas]", allow_empty=True, default=t.get("exclude", None))
-        t["notif_agents"] = create_task_add_notif_agents(notif_agents, default=t.get("notif_agents", None))
+        t = {}
+        if edit_task:
+            e = edit_task
+            old_task_name = e.name
+            t["name"] = e.name
+            t["freq"] = e.frequency
+            t["frequ"] = e.frequency_unit
+            t["sources"] = e.source_ids
 
-        print()
-        print(f"Name: {t['name']}")
-        print(f"Frequency: {t['freq']} {t['frequ']}")
-        print(f"Sources")
-        print(f"----------------------------")
-        for s in t["sources"]:
-            print(f"{sources[s].name}")
-        print("-----------------------------")
-        print(f"Include: {t['include']}")
-        print(f"Exclude: {t['exclude']}")
-        print(f"Notification Agents")
-        print(f"----------------------------")
-        for n in t["notif_agents"]:
-            print(f"{notif_agents[n].name}")
-        print("-----------------------------")
-
-        """
-        if edit_task is None:
-            confirm_msg = "Create this task"
-        else:
-            confirm_msg = f"Save changes to task '{old_task_name}'"
-
-        confirm = creator.prompt_options(confirm_msg, ["y", "n", "quit"])
-        """
-
-        confirm = creator.prompt_options("Choose an option", ["save", "edit", "quit"])
-
-        if confirm == "save":
-            break
-        elif confirm == "edit":
-            continue
-        elif confirm == "quit":
-            return
-
-    if t["include"] != "":
-        t["include"] = t["include"].split(",")
-
-    if t["exclude"] != "":
-        t["exclude"] = t["exclude"].split(",")
-
-    if edit_task is None:
-        task = Task(
-            name=t["name"],
-            frequency=t["freq"],
-            frequency_unit=t["frequ"],
-            source_ids=t["sources"],
-            include=t["include"],
-            exclude=t["exclude"],
-            notif_agent_ids=t["notif_agents"]
-        )
-        cur_tasks.append(task)
-    else:
-        e = edit_task
-        e.name = t["name"]
-        e.frequency = t["freq"]
-        e.frequency_unit = t["frequ"]
-        e.source_ids = t["sources"]
-        e.include = t["include"].split(",")
-        e.exclude = t["include"].split(",")
-        e.notif_agent_ids = t["notif_agents"]
-
-    save(cur_tasks, file)
-
-def create_task_add_notif_agents(notif_agents_dict, default=None):
-    default_str = ""
-    if default is not None:
-        first = True
-        for s in default:
-            if not s in notif_agents_dict:
-                continue
-
-            if first:
-                default_str = f"[{notif_agents_dict[s].name}"
-                first = False
+            if len(e.include) == 0 or e.include[0] == "":
+                t["include"] = ""
             else:
-                default_str = f"{default_str}, {notif_agents_dict[s].name}"
+                t["include"] = ",".join(e.include)
 
-        default_str = f" {default_str}]"
+            if len(e.exclude) == 0 or e.exclude[0] == "":
+                t["exclude"] = ""
+            else:
+                t["exclude"] = ",".join(e.exclude)
 
-    add_notif_agents = []
+            t["notif_agents"] = e.notif_agent_ids
 
-    if len(notif_agents_dict) == 0:
-        log.error_print(f"No notif_agents found. Please create a notif_agent first")
-        return
+        while True:
+            t["name"] = creator.prompt_string("Name", default=t.get("name", None))
+            t["freq"] = creator.prompt_num("Frequency", default=t.get("freq", 15))
+            t["frequ"] = creator.prompt_options("Frequency Unit", ["minutes", "hours"], default=t.get("frequ", "minutes"))
+            t["sources"] = create_task_add_sources(sources, default=t.get("sources", None))
+            t["include"] = creator.prompt_string("Include [list seperated by commas]", allow_empty=True, default=t.get("include", None))
+            t["exclude"] = creator.prompt_string("exclude [list seperated by commas]", allow_empty=True, default=t.get("exclude", None))
+            t["notif_agents"] = create_task_add_notif_agents(notif_agents, default=t.get("notif_agents", None))
 
-    notif_agents_list = list(notif_agents_dict.values())
-    remaining_notif_agents = notif_agents_list.copy()
-    while len(remaining_notif_agents) > 0:
-        i = 0
-        for s in remaining_notif_agents:
-            print(f"{i} - {s.name}")
-            i = i + 1
+            print()
+            print(f"Name: {t['name']}")
+            print(f"Frequency: {t['freq']} {t['frequ']}")
+            print(f"Sources")
+            print(f"----------------------------")
+            for s in t["sources"]:
+                print(f"{sources[s].name}")
+            print("-----------------------------")
+            print(f"Include: {t['include']}")
+            print(f"Exclude: {t['exclude']}")
 
-        choices = "0"
-        if len(remaining_notif_agents) > 1:
-            choices = f"0-{len(remaining_notif_agents) - 1}"
+            task = Task(
+                name = t["name"],
+                frequency = t["freq"],
+                 frequency_unit = t["frequ"],
+                source_ids = t["sources"],
+                include = t["include"].split(","),
+                exclude = t["include"].split(","),
+                notif_agent_ids = t["notif_agents"]
+            )
 
-        if len(add_notif_agents) > 0:
-            print("r - reset")
-            print("d - done")
+            while True:
+                confirm = creator.prompt_options("Choose an option", ["save", "edit", "dryrun", "quit"])
+                if confirm == "quit":
+                    if creator.yes_no("Quit without saving?", "n") == "y":
+                        return
+                    else:
+                        continue
+                elif confirm == "dryrun":
+                    if creator.yes_no("Execute dry run?", "y"):
+                        log.debug_print("Executing dry run...")
+                        dry_run(task)
 
-        if default is None or len(add_notif_agents) > 0:
-            notif_agent_index_str = input(f"notif_agent [{choices}]: ")
-        else:
-            notif_agent_index_str = input(f"notif_agent [{choices}]:{default_str} ")
-
-        if default is not None and notif_agent_index_str == "" and len(add_notif_agents) == 0:
-            return default
-
-        if len(remaining_notif_agents) == 0 and notif_agent_index_str == "":
-            add_notif_agents.append(remaining_notif_agents[notif_agent_index])
-            break
-
-        if len(add_notif_agents):
-            if notif_agent_index_str == "d":
-                break
-            elif notif_agent_index_str == "r":
-                print ("Resetting...")
-                remaining_notif_agents = notif_agents_list.copy()
-                add_notif_agents = []
-
-        if re.match("[0-9]+$", notif_agent_index_str):
-            notif_agent_index = int(notif_agent_index_str)
-
-            if notif_agent_index >= 0 and notif_agent_index < len(notif_agents_list):
-                add_notif_agents.append(remaining_notif_agents[notif_agent_index])
-                del(remaining_notif_agents[notif_agent_index])
-
-                confirm = creator.yes_no("Add another?", "y")
-                if confirm == "n":
+                    continue
+                else:
                     break
 
-    result = []
-    for s in add_notif_agents:
-        result.append(s.id)
+            if confirm == "save":
+                break
+            elif confirm == "edit":
+                continue
 
-    return result
+
+
+        if edit_task is None:
+            cur_tasks.append(task)
+
+        else:
+            e = edit_task
+            e.name = t["name"]
+            e.frequency = t["freq"]
+            e.frequency_unit = t["frequ"]
+            e.source_ids = t["sources"]
+            e.include = t["include"].split(",")
+            e.exclude = t["include"].split(",")
+            e.notif_agent_ids = t["notif_agents"]
+            task = edit_task
+
+        save(cur_tasks, file)
+
+        """
+        if creator.yes_no("Test this task with a dry run", "y") == "y":
+            while True:
+                dry_run(task)
+
+                confirm = creator.yes_no("Do you want to go back and edit this task")
+                if confirm == "y":
+                    continue
+                elif confirm == "n":
+                    break
+        """
+
+        if creator.yes_no("Prime this task?", "y") == "y":
+            recent = creator.prompt_num("How many of the latest ads do you want notified?", default="3")
+            prime_task (task, recent_ads=int(recent))
+
+
+        if not cronlib.exists(task.frequency, task.frequency_unit):
+            if creator.yes_no(f"Add cronjob for '{task.frequency} {task.frequency_unit}'", "y"):
+                cronlib.clear()
+                for t in cur_tasks:
+                    if not cronlib.exists(t.frequency, task.frequency_unit):
+                        cronlib.add(task.frequency, task.frequency_unit)
+        else:
+            print (f"Cronjob already exists for '{task.frequency} {task.frequency_unit}'... skipping")
+
+        print ("Done!")
+        return
 
 def create_task_add_sources(sources_dict, default=None):
     default_str = ""
     if default is not None:
         first = True
         for s in default:
+            if not s in sources_dict:
+                continue
+
             if first:
                 default_str = f"[{sources_dict[s].name}"
                 first = False
@@ -359,6 +321,81 @@ def create_task_add_sources(sources_dict, default=None):
 
     result = []
     for s in add_sources:
+        result.append(s.id)
+
+    return result
+
+def create_task_add_notif_agents(notif_agents_dict, default=None):
+    default_str = ""
+    if default is not None:
+        first = True
+        for s in default:
+            if not s in notif_agents_dict:
+                continue
+
+            if first:
+                default_str = f"[{notif_agents_dict[s].name}"
+                first = False
+            else:
+                default_str = f"{default_str}, {notif_agents_dict[s].name}"
+
+        default_str = f" {default_str}]"
+
+    add_notif_agents = []
+
+    if len(notif_agents_dict) == 0:
+        log.error_print(f"No notif_agents found. Please add a notif_agent ")
+        return
+
+    notif_agents_list = list(notif_agents_dict.values())
+    remaining_notif_agents = notif_agents_list.copy()
+    while len(remaining_notif_agents) > 0:
+        i = 0
+        for s in remaining_notif_agents:
+            print(f"{i} - {s.name}")
+            i = i + 1
+
+        choices = "0"
+        if len(remaining_notif_agents) > 1:
+            choices = f"0-{len(remaining_notif_agents) - 1}"
+
+        if len(add_notif_agents) > 0:
+            print("r - reset")
+            print("d - done")
+
+        if default is None or len(add_notif_agents) > 0:
+            notif_agent_index_str = input(f"notif_agent [{choices}]: ")
+        else:
+            notif_agent_index_str = input(f"notif_agent [{choices}]:{default_str} ")
+
+        if default is not None and notif_agent_index_str == "" and len(add_notif_agents) == 0:
+            return default
+
+        if len(remaining_notif_agents) == 0 and notif_agent_index_str == "":
+            add_notif_agents.append(remaining_notif_agents[notif_agent_index])
+            break
+
+        if len(add_notif_agents):
+            if notif_agent_index_str == "d":
+                break
+            elif notif_agent_index_str == "r":
+                print ("Resetting...")
+                remaining_notif_agents = notif_agents_list.copy()
+                add_notif_agents = []
+
+        if re.match("[0-9]+$", notif_agent_index_str):
+            notif_agent_index = int(notif_agent_index_str)
+
+            if notif_agent_index >= 0 and notif_agent_index < len(notif_agents_list):
+                add_notif_agents.append(remaining_notif_agents[notif_agent_index])
+                del(remaining_notif_agents[notif_agent_index])
+
+                confirm = creator.yes_no("Add another?", "y")
+                if confirm == "n":
+                    break
+
+    result = []
+    for s in add_notif_agents:
         result.append(s.id)
 
     return result

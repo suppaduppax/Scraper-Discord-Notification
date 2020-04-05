@@ -32,7 +32,7 @@ class KijijiScraper():
     def scrape_for_ads(self, old_ad_ids, exclude=[], **kwargs):
         self.new_ads = {}
         self.old_ad_ids = old_ad_ids
-        self.exclude = exclude
+        self.exclude = []
 
         url = kwargs["url"]
         title = None

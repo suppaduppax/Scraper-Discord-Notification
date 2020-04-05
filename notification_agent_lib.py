@@ -84,10 +84,8 @@ def get_agents(directory, agents_file, modules_dir):
     return result
 
 def get_notif_agents_by_ids(notif_agents, ids):
-    print (ids)
     result = []
     for id in ids:
-        print (f"{id}: enabled: {notif_agents[id].enabled}")
         result.append(notif_agents[id])
 
     return result
