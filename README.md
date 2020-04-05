@@ -15,6 +15,10 @@ Make sure that your machine is up to date.
 
 >$ sudo apt upgrade
 
+Install git if it is not already installed.
+
+>$ sudo apt install git
+
 Use git to pull the repository files to your machine, for this example we will put it in the /github/ directory:
 >$ sudo git clone https://github.com/suppaduppax/Scraper-Discord-Notification.git /github/Scraper-Discord-Notification/
 
