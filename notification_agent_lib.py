@@ -276,7 +276,6 @@ def do_delete_notif_agent(id, notif_agents_dict, tasks_list):
     del notif_agents_dict[id]
 
 def create_notif_agent_choose_module(modules, default=None):
-    print (modules)
     default_str = ""
     if default is not None:
         default_str = f" [{default}]"

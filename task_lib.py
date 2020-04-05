@@ -8,6 +8,7 @@ import subprocess
 import re
 
 import creator_utils_lib as creator
+import logger_lib as log
 
 minute="minute"
 hour="hour"
@@ -96,7 +97,7 @@ def append_task_to_file(task, file):
 def delete_task_from_file(index, file):
     tasks = load_tasks(file)
     if index < 0 or index >= len(tasks):
-        logging.error(f"tasklib.delete_task_from_file: Invalid index: {index}")
+        log.error_print(f"tasklib.delete_task_from_file: Invalid index: {index}")
         return
 
     del(tasks[index])
@@ -122,7 +123,7 @@ if __name__ == "__main__":
     t = load_tasks("tasks.yaml")
     save_tasks(t, "tasks.yaml", "tasks.yaml")
 
-def task_creator(cur_tasks, sources, file, edit_task=None):
+def task_creator(cur_tasks, sources, notif_agents, file, edit_task=None):
     t = {}
     if edit_task:
         e = edit_task
@@ -140,6 +141,7 @@ def task_creator(cur_tasks, sources, file, edit_task=None):
             t["exclude"] = ",".join(e.exclude)
         else:
             t["exclude"] = ""
+        t["notif_agents"] = e.notif_agent_ids
 
 
     while True:
@@ -148,7 +150,8 @@ def task_creator(cur_tasks, sources, file, edit_task=None):
         t["frequ"] = creator.prompt_options("Frequency Unit", ["minutes", "hours"], default=t.get("frequ", "minutes"))
         t["sources"] = create_task_add_sources(sources, default=t.get("sources", None))
         t["include"] = creator.prompt_string("Include [list seperated by commas]", allow_empty=True, default=t.get("include", None))
-        t["exclude"] = creator.prompt_string("exclude [list seperated by commas]", allow_empty=True, default=t.get("exclude", None))
+        t["exclude"] = creator.prompt_string("Exclude [list seperated by commas]", allow_empty=True, default=t.get("exclude", None))
+        t["notif_agents"] = create_task_add_notif_agents(notif_agents, default=t.get("notif_agents", None))
 
         print()
         print(f"Name: {t['name']}")
@@ -160,6 +163,11 @@ def task_creator(cur_tasks, sources, file, edit_task=None):
         print("-----------------------------")
         print(f"Include: {t['include']}")
         print(f"Exclude: {t['exclude']}")
+        print(f"Notification Agents")
+        print(f"----------------------------")
+        for n in t["notif_agents"]:
+            print(f"{notif_agents[n].name}")
+        print("-----------------------------")
 
         """
         if edit_task is None:
@@ -192,7 +200,8 @@ def task_creator(cur_tasks, sources, file, edit_task=None):
             frequency_unit=t["frequ"],
             source_ids=t["sources"],
             include=t["include"],
-            exclude=t["exclude"]
+            exclude=t["exclude"],
+            notif_agent_ids=t["notif_agents"]
         )
         cur_tasks.append(task)
     else:
@@ -203,8 +212,81 @@ def task_creator(cur_tasks, sources, file, edit_task=None):
         e.source_ids = t["sources"]
         e.include = t["include"].split(",")
         e.exclude = t["include"].split(",")
+        e.notif_agent_ids = t["notif_agents"]
 
     save(cur_tasks, file)
+
+def create_task_add_notif_agents(notif_agents_dict, default=None):
+    default_str = ""
+    if default is not None:
+        first = True
+        for s in default:
+            if first:
+                default_str = f"[{notif_agents_dict[s].name}"
+                first = False
+            else:
+                default_str = f"{default_str}, {notif_agents_dict[s].name}"
+
+        default_str = f" {default_str}]"
+
+    add_notif_agents = []
+
+    if len(notif_agents_dict) == 0:
+        log.error_print(f"No notif_agents found. Please create a notif_agent first")
+        return
+
+    notif_agents_list = list(notif_agents_dict.values())
+    remaining_notif_agents = notif_agents_list.copy()
+    while len(remaining_notif_agents) > 0:
+        i = 0
+        for s in remaining_notif_agents:
+            print(f"{i} - {s.name}")
+            i = i + 1
+
+        choices = "0"
+        if len(remaining_notif_agents) > 1:
+            choices = f"0-{len(remaining_notif_agents) - 1}"
+
+        if len(add_notif_agents) > 0:
+            print("r - reset")
+            print("d - done")
+
+        if default is None or len(add_notif_agents) > 0:
+            notif_agent_index_str = input(f"notif_agent [{choices}]: ")
+        else:
+            notif_agent_index_str = input(f"notif_agent [{choices}]:{default_str} ")
+
+        if default is not None and notif_agent_index_str == "" and len(add_notif_agents) == 0:
+            return default
+
+        if len(remaining_notif_agents) == 0 and notif_agent_index_str == "":
+            add_notif_agents.append(remaining_notif_agents[notif_agent_index])
+            break
+
+        if len(add_notif_agents):
+            if notif_agent_index_str == "d":
+                break
+            elif notif_agent_index_str == "r":
+                print ("Resetting...")
+                remaining_notif_agents = notif_agents_list.copy()
+                add_notif_agents = []
+
+        if re.match("[0-9]+$", notif_agent_index_str):
+            notif_agent_index = int(notif_agent_index_str)
+
+            if notif_agent_index >= 0 and notif_agent_index < len(notif_agents_list):
+                add_notif_agents.append(remaining_notif_agents[notif_agent_index])
+                del(remaining_notif_agents[notif_agent_index])
+
+                confirm = creator.yes_no("Add another?", "y")
+                if confirm == "n":
+                    break
+
+    result = []
+    for s in add_notif_agents:
+        result.append(s.id)
+
+    return result
 
 def create_task_add_sources(sources_dict, default=None):
     default_str = ""
@@ -222,7 +304,7 @@ def create_task_add_sources(sources_dict, default=None):
     add_sources = []
 
     if len(sources_dict) == 0:
-        log.error_print(f"No sources found. Please create a source first")
+        log.error_print(f"No sources found. Please add a source ")
         return
 
     sources_list = list(sources_dict.values())
@@ -278,17 +360,25 @@ def create_task_add_sources(sources_dict, default=None):
 
     return result
 
-def create_task(cur_tasks, sources, file, edit_task=None):
-    creator.print_title("Add Task")
-    task_creator(cur_tasks, sources, file, edit_task=edit_task)
+def create_task(cur_tasks, sources, notif_agents, file):
+    if len(sources) == 0:
+        log.error_print("No sources found. Please add a source before creating a task")
+        return
 
-def edit_task(cur_tasks, sources, file):
+    if len(notif_agents) == 0:
+        log.error_print("No notification agents found. Please add a notification agent before creating a task")
+        return
+
+    creator.print_title("Add Task")
+    task_creator(cur_tasks, sources, notif_agents, file, edit_task=None)
+
+def edit_task(cur_tasks, sources, notif_agents, file):
     creator.print_title("Edit Task")
     task = creator.prompt_complex_list("Choose a task", cur_tasks, "name", extra_options=["d"], extra_options_desc=["done"])
     if task == "d":
         return
     else:
-        create_task(cur_tasks, sources, file, task)
+        task_creator(cur_tasks, sources, notif_agents, file, task)
 
 def delete_task(tasks_list, file):
     creator.print_title("Delete Task")

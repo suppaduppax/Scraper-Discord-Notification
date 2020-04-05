@@ -152,7 +152,7 @@ def source_creator(cur_sources, scrapers, file, edit_source=None):
         set_props[p] = s[f"prop_{p}"]
 
     if edit_source is None:
-        source = sourcelib.Source(
+        source = Source(
             id=s["id"],
             name=s["name"],
             module=s["module"],
