@@ -1,7 +1,7 @@
 """
 
 """
-
+import os
 import yaml
 import collections
 import subprocess
@@ -25,13 +25,17 @@ class Source:
         return Source(**data)
 
 def load(file):
+    if not os.path.exists(file):
+        open(file, "w+")
+
     with open(file, "r") as stream:
         sources_yaml = yaml.safe_load(stream)
 
     sources = {}
-    for s in sources_yaml:
-        source = Source.load(s)
-        sources[source.id] = source
+    if sources_yaml is not None:
+        for s in sources_yaml:
+            source = Source.load(s)
+            sources[source.id] = source
 
     return sources
 

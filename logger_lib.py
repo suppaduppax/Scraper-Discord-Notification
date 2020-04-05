@@ -16,6 +16,9 @@ x = settings.get("log_rotation_files")
 current_directory = os.path.dirname(os.path.realpath(__file__))
 
 log_path = current_directory + "/logs"
+if not os.path.exists(log_path):
+    os.makedirs(log_path)
+
 log_file_debug = "debug.log"
 log_file_cron = "cron.log"
 

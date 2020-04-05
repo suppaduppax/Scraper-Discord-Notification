@@ -1,7 +1,7 @@
 """
 
 """
-
+import os
 import yaml
 import collections
 import subprocess
@@ -50,12 +50,16 @@ class Task:
         return time == self.frequency and unit[:1] == self.frequency_unit[:1]
 
 def load_tasks(file):
+    if not os.path.exists(file):
+        open(file, "w+")
+
     with open(file, "r") as stream:
         tasks_yaml = yaml.safe_load(stream)
 
     tasks = []
-    for t in tasks_yaml:
-        tasks.append(Task.load(t))
+    if tasks_yaml is not None:
+        for t in tasks_yaml:
+            tasks.append(Task.load(t))
 
     return tasks
 
@@ -136,6 +140,7 @@ def task_creator(cur_tasks, sources, file, edit_task=None):
             t["exclude"] = ",".join(e.exclude)
         else:
             t["exclude"] = ""
+
 
     while True:
         t["name"] = creator.prompt_string("Name", default=t.get("name", None))

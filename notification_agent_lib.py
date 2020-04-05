@@ -59,9 +59,14 @@ def get_agents(directory, agents_file, modules_dir):
     modules = get_modules(directory, modules_dir)
     result = {}
 
+    if not os.path.exists(agents_file):
+        open(agents_file, "w+")
+
     with open(f"{directory}/{agents_file}", "r") as stream:
         config = yaml.safe_load(stream)
 
+    if config is None:
+        return {}
 
     for c in config:
         agent = notif_agent(
