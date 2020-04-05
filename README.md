@@ -33,9 +33,6 @@ Install some required packages for python:
 Give main.py executable permissions.
 >$ sudo chmod +x /github/Scraper-Discord-Notification/main.py
 
-Give ads.json write permissions so that old ads can be stored.
->$ sudo chmod a+w /github/Scraper-Discord-Notification/ads.json
-
 **Get a Discord Webhook**
 
 You will need a webhook when making your notification agent, get this ready.
