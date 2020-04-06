@@ -22,6 +22,7 @@ Install git if it is not already installed.
 Use git to pull the repository files to your machine, use a directory your which user has write permissions for.
 In this case we will use the home directory.
 >$ cd ~
+
 >$ sudo git clone https://github.com/suppaduppax/Scraper-Discord-Notification.git
 
 Install some required packages:
