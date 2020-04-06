@@ -72,6 +72,7 @@ Try your crontab again
 # 
 # m h  dom mon dow   command
 ```
+If you have a similar output, your user should now have a crontab
 
 **Get a Discord Webhook**
 
