@@ -19,19 +19,21 @@ Install git if it is not already installed.
 
 >$ sudo apt install git
 
-Use git to pull the repository files to your machine, for this example we will put it in the /github/ directory:
->$ sudo git clone https://github.com/suppaduppax/Scraper-Discord-Notification.git /github/Scraper-Discord-Notification/
+Use git to pull the repository files to your machine, use a directory your which user has write permissions for.
+In this case we will use the home directory.
+>$ cd ~
+>$ sudo git clone https://github.com/suppaduppax/Scraper-Discord-Notification.git
 
 Install some required packages:
 >$ sudo apt install python3-pip python3-bs4
 
 Install some required packages for python:
->$ sudo -H pip3 install -r /github/Scraper-Discord-Notification/requirements.txt
+>$ sudo -H pip3 install -r ~/Scraper-Discord-Notification/requirements.txt
 
 <h2>Setup</h2>
 
 Give main.py executable permissions.
->$ sudo chmod +x /github/Scraper-Discord-Notification/main.py
+>$ sudo chmod +x ~/Scraper-Discord-Notification/main.py
 
 **Get a Discord Webhook**
 
@@ -51,19 +53,19 @@ Use any of the filters on the left hand side of the page to narrow down your sea
 
 **Add a Notification Agent**
 
->$ python3 /github/Scraper-Discord-Notification/main.py notification-agent add
+>$ python3 ~/Scraper-Discord-Notification/main.py notification-agent add
 
 Notification agents are what will be used to notify you when new ads are found.
 Right now, only discord is supported more will he more added in the future.
  
 **Add a Source**
->$ python3 /github/Scraper-Discord-Notification/main.py source add
+>$ python3 ~/Scraper-Discord-Notification/main.py source add
  
 Sources contain the configuration that will be used when doing the actual scraping. Right
 now only the kijiji module is supported but more will be added in the future.
 
 **Add a Task**
->$ python3 /github/Scraper-Discord-Notification/main.py task add
+>$ python3 ~/Scraper-Discord-Notification/main.py task add
  
 Tasks are what executes the scraping process and runs the notification.
 You can set the frequency of these tasks which will use cron to run them on
