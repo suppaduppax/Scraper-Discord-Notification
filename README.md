@@ -138,4 +138,5 @@ There is only a couple of implemented settings in the 'settings.yaml' file.
 
 <h2>Commands</h2>
 Use the help command to see what commands are available
+
 >$ python3 main.py --help 
